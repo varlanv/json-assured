@@ -180,8 +180,10 @@ public interface JsonAssured {
                           }
                           throw new AssertionError(
                               String.format(
-                                  "Expected type BigDecimal at path \"%s\", but actual type was \"%s\"",
-                                  jsonPath, val.getClass().getName()));
+                                  "Expected type Decimal at path \"%s\", but actual type was \"%s\"%s",
+                                  jsonPath,
+                                  resolveActualTypeName(val),
+                                  val == null ? "" : String.format(": <%s>", val)));
                         })));
             return this;
           });

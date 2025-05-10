@@ -66,8 +66,10 @@ public interface JsonAssured {
         return "long";
       } else if (val instanceof Boolean) {
         return "boolean";
-      } else {
+      } else if (val instanceof Integer) {
         return "integer";
+      } else {
+        return "unknown";
       }
     }
 
@@ -426,7 +428,7 @@ public interface JsonAssured {
       }
       throw new AssertionError(
           String.format(
-              "Expected %s at path \"%s\" to be positive, but actual value was negative: <%s>",
+              "Expected %s at path \"%s\" to be positive, but actual value was <%s>",
               typeName, path, actualNum));
     }
 
@@ -442,70 +444,118 @@ public interface JsonAssured {
     }
 
     public JsonNumberAssertions<N> isZero() {
-      if (numberSupplier.get().compareTo(zero) == 0) {
+      var actualNum = numberSupplier.get();
+      if (actualNum.compareTo(zero) == 0) {
         return this;
       }
-      throw new AssertionError(String.format("Number at path \"%s\" is not zero", path));
+      throw new AssertionError(
+          String.format(
+              "Expected %s at path \"%s\" to be zero, but actual value was <%s>",
+              typeName, path, actualNum));
     }
 
     public JsonNumberAssertions<N> isEqualTo(N expected) {
-      if (numberSupplier.get().equals(expected)) {
+      InternalUtils.expectedNotNull(expected);
+      var actualNum = numberSupplier.get();
+      if (actualNum.equals(expected)) {
         return this;
       }
       throw new AssertionError(
-          String.format("Number at path \"%s\" does not equal \"%s\"", path, expected));
+          String.format(
+              "Expected %s at path \"%s\" to be equal <%s>, but actual value was <%s>",
+              typeName, path, expected, actualNum));
     }
 
     public JsonNumberAssertions<N> isNotEqualTo(N expected) {
-      if (!numberSupplier.get().equals(expected)) {
+      InternalUtils.expectedNotNull(expected);
+      var actualNum = numberSupplier.get();
+      if (!actualNum.equals(expected)) {
         return this;
       }
-      throw new AssertionError(String.format("Number at path \"%s\" equal \"%s\"", path, expected));
+      throw new AssertionError(
+          String.format(
+              "Expected %s at path \"%s\" to not be equal <%s>, but were equal",
+              typeName, path, expected));
     }
 
     public JsonNumberAssertions<N> isGte(N expected) {
-      if (numberSupplier.get().compareTo(expected) >= 0) {
+      InternalUtils.expectedNotNull(expected);
+      var actualNum = numberSupplier.get();
+      if (actualNum.compareTo(expected) >= 0) {
         return this;
       }
       throw new AssertionError(
           String.format(
-              "Number at path \"%s\" is not greater than or equal to \"%s\"", path, expected));
+              "Expected %s at path \"%s\" to be greater than or equal to <%s>, but was <%s>",
+              typeName, path, expected, actualNum));
     }
 
     public JsonNumberAssertions<N> isLte(N expected) {
-      if (numberSupplier.get().compareTo(expected) <= 0) {
+      InternalUtils.expectedNotNull(expected);
+      var actualNum = numberSupplier.get();
+      if (actualNum.compareTo(expected) <= 0) {
         return this;
       }
       throw new AssertionError(
           String.format(
-              "Number at path \"%s\" is not less than or equal to \"%s\"", path, expected));
+              "Expected %s at path \"%s\" to be less than or equal to <%s>, but was <%s>",
+              typeName, path, expected, actualNum));
     }
 
     public JsonNumberAssertions<N> isInRange(N min, N max) {
-      if (numberSupplier.get().compareTo(min) >= 0 && numberSupplier.get().compareTo(max) <= 0) {
+      InternalUtils.expectedNotNull(min, "Min");
+      InternalUtils.expectedNotNull(max, "Max");
+      if (min.compareTo(max) > 0) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Min value should be less than or equal to max value, but received min <%s> and max <%s>",
+                min, max));
+      }
+      var actualNum = numberSupplier.get();
+      if (actualNum.compareTo(min) >= 0 && actualNum.compareTo(max) <= 0) {
         return this;
       }
       throw new AssertionError(
-          String.format("Number at path \"%s\" is not in range [%s, %s]", path, min, max));
+          String.format(
+              "Expected %s at path \"%s\" to be in range [%s - %s], but was <%s>",
+              typeName, path, min, max, actualNum));
     }
 
     public JsonNumberAssertions<N> isIn(Iterable<N> expected) {
-      return InternalUtils.isIn(numberSupplier.get(), expected, this);
+      InternalUtils.expectedNotNull(expected);
+      var actualNum = numberSupplier.get();
+      var expectedNums = InternalUtils.listFromIterable(expected);
+      for (var expectedNum : expectedNums) {
+        if (expectedNum.equals(actualNum)) {
+          return this;
+        }
+      }
+      throw new AssertionError(
+          String.format(
+              "%s at path \"%s\" is not in the list of expected values. Actual value: <%s>, list of expected values: %s",
+              typeName, path, actualNum, expectedNums));
     }
 
     public JsonNumberAssertions<N> isNotIn(Iterable<N> expected) {
-      var val = numberSupplier.get();
-      for (var n : expected) {
-        if (n.equals(val)) {
-          throw new AssertionError("Is in");
+      InternalUtils.expectedNotNull(expected);
+      var actualNum = numberSupplier.get();
+      var expectedNums = InternalUtils.listFromIterable(expected);
+      var counter = 0;
+      for (var expectedNum : expectedNums) {
+        if (expectedNum.equals(actualNum)) {
+          throw new AssertionError(
+              String.format(
+                  "%s value at path \"%s\" was found in provided list at index [%d]. Actual value: <%s>, list of values: <%s>",
+                  typeName, path, counter, actualNum, expectedNums));
         }
+        counter++;
       }
       return this;
     }
 
     public JsonNumberAssertions<N> satisfies(ThrowingConsumer<N> consumer) {
-      consumer.toUnchecked().accept(numberSupplier.get());
-      return this;
+      InternalUtils.expectedNotNull(consumer, "Consumer");
+      return InternalUtils.satisfies(consumer, numberSupplier, this, typeName, path);
     }
   }
 
@@ -755,15 +805,8 @@ public interface JsonAssured {
     }
 
     public JsonStringAssertions satisfies(ThrowingConsumer<String> consumer) {
-      try {
-        consumer.toUnchecked().accept(stringSupplier.get());
-      } catch (Throwable t) {
-        InternalUtils.rethrowUnrecoverable(t);
-        throw new AssertionError(
-            String.format("String value at path \"%s\" did not satisfy provided condition", path),
-            t);
-      }
-      return this;
+      InternalUtils.expectedNotNull(consumer, "Consumer");
+      return InternalUtils.satisfies(consumer, stringSupplier, this, "String", path);
     }
   }
 

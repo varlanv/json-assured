@@ -10,6 +10,36 @@ import java.util.stream.Stream;
 
 interface InternalUtils {
 
+  static <T, R> R satisfies(
+      JsonAssured.ThrowingConsumer<T> action,
+      Supplier<T> actualSupplier,
+      R toReturn,
+      String typeName,
+      String path) {
+    try {
+      action.toUnchecked().accept(actualSupplier.get());
+    } catch (Throwable t) {
+      InternalUtils.rethrowUnrecoverable(t);
+      throw new AssertionError(
+          String.format(
+              "%s value at path \"%s\" did not satisfy provided condition", typeName, path),
+          t);
+    }
+    return toReturn;
+  }
+
+  static void expectedNotNull(Object expected) {
+    if (expected == null) {
+      throw new IllegalArgumentException("Expected value cannot be null");
+    }
+  }
+
+  static void expectedNotNull(Object expected, String field) {
+    if (expected == null) {
+      throw new IllegalArgumentException(String.format("'%s' value cannot be null", field));
+    }
+  }
+
   static <T extends Throwable, R> R rethrow(Throwable exception) throws T {
     @SuppressWarnings("unchecked")
     var res = (T) exception;
@@ -161,6 +191,7 @@ interface InternalUtils {
                 + String.format("but found null element at index [%d]", counter));
       }
       objects.add(mapper.apply(t));
+      counter++;
     }
     return objects;
   }

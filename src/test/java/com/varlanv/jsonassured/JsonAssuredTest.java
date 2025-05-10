@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.StringReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 import org.intellij.lang.annotations.Language;
@@ -873,6 +874,32 @@ class JsonAssuredTest {
     }
 
     @Test
+    void isIn__when_charSequences_in__then_ok() {
+      Assertions.assertDoesNotThrow(
+          () ->
+              subject.stringPath(
+                  "$.stringVal",
+                  stringVal ->
+                      stringVal.isIn(
+                          List.of(new StringBuilder("q"), new StringBuffer("sTr"), "qwe"))));
+    }
+
+    @Test
+    void isIn_when_input_contains_null__then_fail() {
+      var in = new ArrayList<String>();
+      in.add("qwe");
+      in.add(null);
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.stringPath("$.stringVal", strVal -> strVal.isIn(in)));
+
+      Assertions.assertEquals(
+          "Array of expected values cannot contain null elements, but found null element at index [1]",
+          assertionError.getMessage());
+    }
+
+    @Test
     void isNotIn__when_in__then_fail() {
       var assertionError =
           Assertions.assertThrows(
@@ -885,6 +912,16 @@ class JsonAssuredTest {
       Assertions.assertEquals(
           "String value at path \"$.stringVal\" was found in provided list at index [2]. Actual value: <sTr>, list of values: <[a, str, sTr, b]>",
           assertionError.getMessage());
+    }
+
+    @Test
+    void satisfies_when_null_input__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.stringPath("$.stringVal", strVal -> strVal.satisfies(null)));
+
+      Assertions.assertEquals("'Consumer' value cannot be null", assertionError.getMessage());
     }
 
     @Test
@@ -1069,6 +1106,18 @@ class JsonAssuredTest {
     }
 
     @Test
+    void isNegative__when_boolean__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.intPath("$.booleanTrue", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Integer at path \"$.booleanTrue\", but actual type was \"boolean\": <true>",
+          assertionError.getMessage());
+    }
+
+    @Test
     void isNegative__when_zero_decimal__then_fail() {
       var assertionError =
           Assertions.assertThrows(
@@ -1120,6 +1169,295 @@ class JsonAssuredTest {
       Assertions.assertEquals(
           "Expected Int number at path \"$.zeroIntVal\" to be negative, but actual value was <0>",
           assertionError.getMessage());
+    }
+
+    @Test
+    void isPositive__when_negative__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.intPath(
+                      "$.negativeIntVal", JsonAssured.JsonNumberAssertions::isPositive));
+
+      Assertions.assertEquals(
+          "Expected Int number at path \"$.negativeIntVal\" to be positive, but actual value was <-123456789>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isPositive__when_zero__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.intPath("$.zeroIntVal", JsonAssured.JsonNumberAssertions::isPositive));
+
+      Assertions.assertEquals(
+          "Expected Int number at path \"$.zeroIntVal\" to be positive, but actual value was <0>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isZero__when_positive__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.intPath("$.positiveIntVal", JsonAssured.JsonNumberAssertions::isZero));
+
+      Assertions.assertEquals(
+          "Expected Int number at path \"$.positiveIntVal\" to be zero, but actual value was <123456789>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isZero__when_negative__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.intPath("$.negativeIntVal", JsonAssured.JsonNumberAssertions::isZero));
+
+      Assertions.assertEquals(
+          "Expected Int number at path \"$.negativeIntVal\" to be zero, but actual value was <-123456789>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isEqualTo__when_equal__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.intPath("$.negativeIntVal", intVal -> intVal.isEqualTo(123)));
+
+      Assertions.assertEquals(
+          "Expected Int number at path \"$.negativeIntVal\" to be equal <123>, but actual value was <-123456789>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isEqualTo_when_null_input__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.intPath("$.negativeIntVal", intVal -> intVal.isEqualTo(null)));
+
+      Assertions.assertEquals("Expected value cannot be null", assertionError.getMessage());
+    }
+
+    @Test
+    void isNotEqualTo_when_null_input__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.intPath("$.negativeIntVal", intVal -> intVal.isNotEqualTo(null)));
+
+      Assertions.assertEquals("Expected value cannot be null", assertionError.getMessage());
+    }
+
+    @Test
+    void isNotEqualTo_when_equal_input__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.intPath("$.negativeIntVal", intVal -> intVal.isNotEqualTo(-123456789)));
+
+      Assertions.assertEquals(
+          "Expected Int number at path \"$.negativeIntVal\" to not be equal <-123456789>, but were equal",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isGte_when_null_input__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.intPath("$.negativeIntVal", intVal -> intVal.isGte(null)));
+
+      Assertions.assertEquals("Expected value cannot be null", assertionError.getMessage());
+    }
+
+    @Test
+    void isGte_when_not_gte__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.intPath("$.negativeIntVal", intVal -> intVal.isGte(1)));
+
+      Assertions.assertEquals(
+          "Expected Int number at path \"$.negativeIntVal\" to be greater than or equal to <1>, but was <-123456789>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isLte_when_null_input__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.intPath("$.negativeIntVal", intVal -> intVal.isLte(null)));
+
+      Assertions.assertEquals("Expected value cannot be null", assertionError.getMessage());
+    }
+
+    @Test
+    void isLte_when_not_lte__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.intPath("$.negativeIntVal", intVal -> intVal.isLte(-1234567890)));
+
+      Assertions.assertEquals(
+          "Expected Int number at path \"$.negativeIntVal\" to be less than or equal to <-1234567890>, but was <-123456789>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isInRange_when_null_min__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.intPath("$.negativeIntVal", intVal -> intVal.isInRange(null, 1)));
+
+      Assertions.assertEquals("'Min' value cannot be null", assertionError.getMessage());
+    }
+
+    @Test
+    void isInRange_when_null_max__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.intPath("$.negativeIntVal", intVal -> intVal.isInRange(1, null)));
+
+      Assertions.assertEquals("'Max' value cannot be null", assertionError.getMessage());
+    }
+
+    @Test
+    void isInRange_when_bottom_higher_than_top__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.intPath("$.negativeIntVal", intVal -> intVal.isInRange(2, 1)));
+
+      Assertions.assertEquals(
+          "Min value should be less than or equal to max value, but received min <2> and max <1>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isInRange_when_not_in_range_bottom__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.intPath(
+                      "$.positiveIntVal", intVal -> intVal.isInRange(123456787, 123456788)));
+
+      Assertions.assertEquals(
+          "Expected Int number at path \"$.positiveIntVal\" to be in range [123456787 - 123456788], but was <123456789>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isInRange_when_not_in_range_top__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.intPath(
+                      "$.positiveIntVal", intVal -> intVal.isInRange(123456790, 123456791)));
+
+      Assertions.assertEquals(
+          "Expected Int number at path \"$.positiveIntVal\" to be in range [123456790 - 123456791], but was <123456789>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isIn_when_null_input__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.intPath("$.positiveIntVal", intVal -> intVal.isIn(null)));
+
+      Assertions.assertEquals("Expected value cannot be null", assertionError.getMessage());
+    }
+
+    @Test
+    void isIn_when_input_contains_null__then_fail() {
+      var in = new ArrayList<Integer>();
+      in.add(123456789);
+      in.add(null);
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.intPath("$.positiveIntVal", intVal -> intVal.isIn(in)));
+
+      Assertions.assertEquals(
+          "Array of expected values cannot contain null elements, but found null element at index [1]",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isIn_when_not_in__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.intPath("$.positiveIntVal", intVal -> intVal.isIn(List.of(1, 2))));
+
+      Assertions.assertEquals(
+          "Int number at path \"$.positiveIntVal\" is not in the list of expected values. "
+              + "Actual value: <123456789>, list of expected values: [1, 2]",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNotIn_when_null_input__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.intPath("$.positiveIntVal", intVal -> intVal.isNotIn(null)));
+
+      Assertions.assertEquals("Expected value cannot be null", assertionError.getMessage());
+    }
+
+    @Test
+    void isNotIn_when__in__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.intPath(
+                      "$.positiveIntVal", intVal -> intVal.isNotIn(List.of(1, 123456789, 2))));
+
+      Assertions.assertEquals(
+          "Int number value at path \"$.positiveIntVal\" was found in provided list at index [1]. "
+              + "Actual value: <123456789>, list of values: <[1, 123456789, 2]>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void satisfies_when_null_input__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.intPath("$.positiveIntVal", intVal -> intVal.satisfies(null)));
+
+      Assertions.assertEquals("'Consumer' value cannot be null", assertionError.getMessage());
+    }
+
+    @Test
+    void satisfies_when_not_satisfies__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.intPath(
+                      "$.positiveIntVal",
+                      intVal -> intVal.satisfies(val -> Assertions.assertEquals(1, val))));
+
+      Assertions.assertEquals(
+          "Int number value at path \"$.positiveIntVal\" did not satisfy provided condition",
+          assertionError.getMessage());
+
+      Assertions.assertEquals(
+          "expected: <1> but was: <123456789>", assertionError.getCause().getMessage());
     }
   }
 

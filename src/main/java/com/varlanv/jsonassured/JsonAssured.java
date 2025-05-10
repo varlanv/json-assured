@@ -197,28 +197,25 @@ public interface JsonAssured {
                 new JsonStringArrayAssertions(
                     jsonPath,
                     new MemoizedSupplier<>(
-                        () -> {
-                          var val = contextSupplier.get().read(jsonPath, Object.class);
-                          if (val instanceof Iterable<?>) {
-                            var items = (Iterable<?>) val;
-                            var objects = new ArrayList<String>();
-                            for (var item : items) {
-                              if (item instanceof String) {
-                                objects.add((String) item);
-                              } else {
-                                throw new AssertionError(
-                                    String.format(
-                                        "Expected string array type at path \"%s\", but actual type of value in array was \"%s\"",
-                                        jsonPath, item.getClass().getName()));
-                              }
-                            }
-                            return objects;
-                          }
-                          throw new AssertionError(
-                              String.format(
-                                  "Expected string array type at path \"%s\", but actual type was \"%s\"",
-                                  jsonPath, resolveActualTypeName(val)));
-                        })));
+                        () ->
+                            InternalUtils.objectToList(
+                                contextSupplier.get().read(jsonPath, Object.class),
+                                item -> {
+                                  if (item instanceof CharSequence) {
+                                    return ((CharSequence) item).toString();
+                                  } else {
+                                    throw new AssertionError(
+                                        String.format(
+                                            "Expected string array type at path \"%s\", but actual type of value in array was \"%s\"",
+                                            jsonPath, resolveActualTypeName(item)));
+                                  }
+                                },
+                                val -> {
+                                  throw new AssertionError(
+                                      String.format(
+                                          "Expected string array type at path \"%s\", but actual type was \"%s\"",
+                                          jsonPath, resolveActualTypeName(val)));
+                                }))));
             return this;
           });
     }
@@ -229,32 +226,29 @@ public interface JsonAssured {
       return InternalUtils.sneakyGet(
           () -> {
             consumer.accept(
-                new JsonNumberArrayAssertions<>(
+                new JsonNumberArrayAssertions<Integer>(
                     jsonPath,
                     "Int",
                     new MemoizedSupplier<>(
-                        () -> {
-                          var val = contextSupplier.get().read(jsonPath, Object.class);
-                          if (val instanceof Iterable<?>) {
-                            var items = (Iterable<?>) val;
-                            var objects = new ArrayList<Integer>();
-                            for (var item : items) {
-                              if (item instanceof Integer) {
-                                objects.add((Integer) item);
-                              } else {
-                                throw new AssertionError(
-                                    String.format(
-                                        "Expected int array type at path \"%s\", but actual type of value in array was \"%s\"",
-                                        jsonPath, resolveActualTypeName(item)));
-                              }
-                            }
-                            return objects;
-                          }
-                          throw new AssertionError(
-                              String.format(
-                                  "Expected int array type at path \"%s\", but actual type was \"%s\"",
-                                  jsonPath, val.getClass().getName()));
-                        })));
+                        () ->
+                            InternalUtils.objectToList(
+                                contextSupplier.get().read(jsonPath, Object.class),
+                                item -> {
+                                  if (item instanceof Integer) {
+                                    return ((Integer) item);
+                                  } else {
+                                    throw new AssertionError(
+                                        String.format(
+                                            "Expected int array type at path \"%s\", but actual type of value in array was \"%s\"",
+                                            jsonPath, resolveActualTypeName(item)));
+                                  }
+                                },
+                                val -> {
+                                  throw new AssertionError(
+                                      String.format(
+                                          "Expected int array type at path \"%s\", but actual type was \"%s\"",
+                                          jsonPath, resolveActualTypeName(val)));
+                                }))));
             return this;
           });
     }
@@ -265,34 +259,31 @@ public interface JsonAssured {
       return InternalUtils.sneakyGet(
           () -> {
             consumer.accept(
-                new JsonNumberArrayAssertions<>(
+                new JsonNumberArrayAssertions<Long>(
                     jsonPath,
                     "Long",
                     new MemoizedSupplier<>(
-                        () -> {
-                          var val = readVal(jsonPath);
-                          if (val instanceof Iterable<?>) {
-                            var items = (Iterable<?>) val;
-                            var objects = new ArrayList<Long>();
-                            for (var item : items) {
-                              if (item instanceof Long) {
-                                objects.add((Long) item);
-                              } else if (item instanceof Integer) {
-                                objects.add(((Integer) item).longValue());
-                              } else {
-                                throw new AssertionError(
-                                    String.format(
-                                        "Expected long array type at path \"%s\", but actual type of value in array was \"%s\"",
-                                        jsonPath, item.getClass().getName()));
-                              }
-                            }
-                            return objects;
-                          }
-                          throw new AssertionError(
-                              String.format(
-                                  "Expected long array type at path \"%s\", but actual type was \"%s\"",
-                                  jsonPath, val.getClass().getName()));
-                        })));
+                        () ->
+                            InternalUtils.objectToList(
+                                contextSupplier.get().read(jsonPath, Object.class),
+                                item -> {
+                                  if (item instanceof Long) {
+                                    return ((Long) item);
+                                  } else if (item instanceof Integer) {
+                                    return ((Integer) item).longValue();
+                                  } else {
+                                    throw new AssertionError(
+                                        String.format(
+                                            "Expected long array type at path \"%s\", but actual type of value in array was \"%s\"",
+                                            jsonPath, resolveActualTypeName(item)));
+                                  }
+                                },
+                                val -> {
+                                  throw new AssertionError(
+                                      String.format(
+                                          "Expected long array type at path \"%s\", but actual type was \"%s\"",
+                                          jsonPath, resolveActualTypeName(val)));
+                                }))));
             return this;
           });
     }
@@ -303,34 +294,31 @@ public interface JsonAssured {
       return InternalUtils.sneakyGet(
           () -> {
             consumer.accept(
-                new JsonNumberArrayAssertions<>(
+                new JsonNumberArrayAssertions<BigDecimal>(
                     jsonPath,
                     "Decimal",
                     new MemoizedSupplier<>(
-                        () -> {
-                          var val = contextSupplier.get().read(jsonPath, Object.class);
-                          if (val instanceof Iterable<?>) {
-                            var items = (Iterable<?>) val;
-                            var objects = new ArrayList<BigDecimal>();
-                            for (var item : items) {
-                              if (item instanceof BigDecimal) {
-                                objects.add((BigDecimal) item);
-                              } else if (item instanceof Double) {
-                                objects.add(BigDecimal.valueOf((Double) item));
-                              } else {
-                                throw new AssertionError(
-                                    String.format(
-                                        "Expected decimal array type at path \"%s\", but actual type of value in array was \"%s\"",
-                                        jsonPath, item.getClass().getName()));
-                              }
-                            }
-                            return objects;
-                          }
-                          throw new AssertionError(
-                              String.format(
-                                  "Expected decimal array type at path \"%s\", but actual type was \"%s\"",
-                                  jsonPath, val.getClass().getName()));
-                        })));
+                        () ->
+                            InternalUtils.objectToList(
+                                contextSupplier.get().read(jsonPath, Object.class),
+                                item -> {
+                                  if (item instanceof BigDecimal) {
+                                    return ((BigDecimal) item);
+                                  } else if (item instanceof Double) {
+                                    return BigDecimal.valueOf((Double) item);
+                                  } else {
+                                    throw new AssertionError(
+                                        String.format(
+                                            "Expected decimal array type at path \"%s\", but actual type of value in array was \"%s\"",
+                                            jsonPath, resolveActualTypeName(item)));
+                                  }
+                                },
+                                val -> {
+                                  throw new AssertionError(
+                                      String.format(
+                                          "Expected decimal array type at path \"%s\", but actual type was \"%s\"",
+                                          jsonPath, resolveActualTypeName(val)));
+                                }))));
             return this;
           });
     }
@@ -873,6 +861,14 @@ public interface JsonAssured {
     JsonStringArrayAssertions(String path, MemoizedSupplier<List<String>> stringsSupplier) {
       this.path = path;
       this.stringsSupplier = stringsSupplier;
+    }
+
+    public JsonStringArrayAssertions isEmpty() {
+      return InternalUtils.isEmpty(this, stringsSupplier, path, "String");
+    }
+
+    public JsonStringArrayAssertions isNotEmpty() {
+      return InternalUtils.isNotEmpty(this, stringsSupplier, path, "String");
     }
 
     public JsonStringArrayAssertions hasSize(int size) {

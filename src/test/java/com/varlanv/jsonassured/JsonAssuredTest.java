@@ -43,6 +43,9 @@ class JsonAssuredTest {
                       "nestedIntVal": 123456789
                     },
                     "stringsArray": ["a","b","c"],
+                    "onlyNullsArray": [null, null, null],
+                    "stringsWithNullsArray": ["a", null, "c", null],
+                    "emptyArray": [],
                     "intArray": [1, 2, 3],
                     "longArray": [1234567890123456],
                     "decimalArray": [123456789.123456789, 123456789.223456789],
@@ -215,10 +218,35 @@ class JsonAssuredTest {
         .stringPath("$.stringsArray[1]", strVal -> strVal.isEqualTo("b"))
         .stringPath("$.stringsArray[2]", strVal -> strVal.isEqualTo("c"))
         .stringArrayPath(
+            "$.onlyNullsArray",
+            arrVal ->
+                arrVal
+                    .isNotEmpty()
+                    .hasSize(3)
+                    .allSatisfy(Assertions::assertNull)
+                    .anySatisfy(Assertions::assertNull)
+                    .satisfy(array -> Assertions.assertEquals(3, array.size())))
+        .stringArrayPath(
+            "$.emptyArray",
+            arrVal ->
+                arrVal
+                    .isEmpty()
+                    .hasSize(0)
+                    .satisfy(array -> Assertions.assertEquals(0, array.size()))
+                    .allSatisfy(
+                        item -> {
+                          throw new IllegalArgumentException("should never happen");
+                        })
+                    .doesNotContainNull())
+        .stringArrayPath(
             "$.stringsArray[*]",
             strVals ->
                 strVals
                     .hasSize(3)
+                    .isNotEmpty()
+                    .containsAll(List.of("a", "b", "c"))
+                    .containsAny(List.of("q", "w", "e", "a", "b", "c"))
+                    .doesNotContainNull()
                     .anySatisfy(val -> Assertions.assertEquals("a", val))
                     .allSatisfy(val -> Assertions.assertEquals(1, val.length()))
                     .satisfy(vals -> Assertions.assertEquals(3, vals.size())))
@@ -1751,6 +1779,90 @@ class JsonAssuredTest {
       Assertions.assertEquals(
           "Expected Decimal number at path \"$.positiveDecimalVal\" to be negative, but actual value was <123456789.123456789>",
           assertionError.getMessage());
+    }
+  }
+
+  @Nested
+  class stringArrayPath {
+
+    @Test
+    void when_null_target_path__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.stringArrayPath(
+                      "$.nullVal", JsonAssured.JsonStringArrayAssertions::isNotEmpty));
+
+      Assertions.assertEquals(
+          "Expected string array type at path \"$.nullVal\", but actual type was \"null\"",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void when_string_target_path__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.stringArrayPath(
+                      "$.stringVal", JsonAssured.JsonStringArrayAssertions::isNotEmpty));
+
+      Assertions.assertEquals(
+          "Expected string array type at path \"$.stringVal\", but actual type was \"string\"",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void when_object_array_target_path__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.stringArrayPath(
+                      "$.objectsArray", JsonAssured.JsonStringArrayAssertions::isNotEmpty));
+
+      Assertions.assertEquals(
+          "Expected string array type at path \"$.objectsArray\", but actual type of value in array was \"object\"",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void when_number_array_target_path__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.stringArrayPath(
+                      "$.intArray", JsonAssured.JsonStringArrayAssertions::isNotEmpty));
+
+      Assertions.assertEquals(
+          "Expected string array type at path \"$.intArray\", but actual type of value in array was \"integer\"",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void when_only_nulls__array_target_path__then_ok() {
+      Assertions.assertDoesNotThrow(
+          () ->
+              subject.stringArrayPath(
+                  "$.onlyNullsArray", JsonAssured.JsonStringArrayAssertions::isNotEmpty));
+    }
+
+    @Test
+    void when_nulls_and_strings__array_target_path__then_ok() {
+      Assertions.assertDoesNotThrow(
+          () ->
+              subject.stringArrayPath(
+                  "$.stringsWithNullsArray", JsonAssured.JsonStringArrayAssertions::isNotEmpty));
+    }
+
+    @Test
+    void when_empty__array_target_path__then_ok() {
+      Assertions.assertDoesNotThrow(
+          () ->
+              subject.stringArrayPath(
+                  "$.emptyArray", JsonAssured.JsonStringArrayAssertions::isEmpty));
     }
   }
 

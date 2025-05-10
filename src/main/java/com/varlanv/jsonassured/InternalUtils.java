@@ -7,6 +7,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.jetbrains.annotations.Nullable;
 
 interface InternalUtils {
 
@@ -67,6 +68,29 @@ interface InternalUtils {
       }
     }
     throw new AssertionError("");
+  }
+
+  static <R> R isEmpty(
+      R toReturn, Supplier<? extends List<?>> subjectSupplier, String path, String arrayType) {
+    var subject = subjectSupplier.get();
+    if (subject.isEmpty()) {
+      return toReturn;
+    }
+    throw new AssertionError(
+        String.format(
+            "%s array at path \"%s\" has size %d, but expected to be empty",
+            arrayType, path, subject.size()));
+  }
+
+  static <R> R isNotEmpty(
+      R toReturn, Supplier<? extends List<?>> subjectSupplier, String path, String arrayType) {
+    var subject = subjectSupplier.get();
+    if (!subject.isEmpty()) {
+      return toReturn;
+    }
+    throw new AssertionError(
+        String.format(
+            "%s array at path \"%s\" is expected to be not empty, but was empty", arrayType, path));
   }
 
   static <R> R hasSize(
@@ -246,5 +270,23 @@ interface InternalUtils {
       throw new IllegalArgumentException("Array of expected values cannot be empty");
     }
     return expectedList;
+  }
+
+  static <E, T extends Throwable> List<E> objectToList(
+      @Nullable Object val, Function<Object, E> mapper, Function<@Nullable Object, T> onError)
+      throws T {
+    if (val instanceof Iterable<?>) {
+      var items = (Iterable<?>) val;
+      var objects = new ArrayList<E>();
+      for (var item : items) {
+        if (item == null) {
+          objects.add(null);
+        } else {
+          objects.add(mapper.apply(item));
+        }
+      }
+      return objects;
+    }
+    throw onError.apply(val);
   }
 }

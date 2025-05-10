@@ -16,13 +16,13 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 public interface JsonAssured {
 
     static JsonPathAssertions assertJson(byte[] bytes) {
-        return assertJson(new ByteArrayInputStream(bytes));
+        Objects.requireNonNull(bytes);
+        return new JsonPathAssertions(new MemoizedSupplier<>(() -> JsonPath.parse(new ByteArrayInputStream(bytes))));
     }
 
     static JsonPathAssertions assertJson(InputStream is) {
@@ -31,6 +31,7 @@ public interface JsonAssured {
     }
 
     static JsonPathAssertions assertJson(Reader reader) {
+        Objects.requireNonNull(reader);
         var str = new BufferedReader(reader).lines().collect(Collectors.joining(System.lineSeparator()));
         var bytes = str.getBytes(StandardCharsets.UTF_8);
         return assertJson(bytes);
@@ -64,7 +65,10 @@ public interface JsonAssured {
         }
 
         @Nullable
-        Object readVal(@Language("jsonpath") String jsonPath) {
+        Object readVal(@Nullable @Language("jsonpath") String jsonPath) {
+            if (jsonPath == null || jsonPath.isBlank()) {
+                throw new IllegalArgumentException("jsonPath should be non-null and non-blank");
+            }
             return contextSupplier.get().read(jsonPath, Object.class);
         }
 
@@ -72,11 +76,11 @@ public interface JsonAssured {
             return InternalUtils.sneakyGet(() -> {
                 consumer.accept(new JsonStringAssertions(jsonPath, new MemoizedSupplier<>(() -> {
                     var val = readVal(jsonPath);
-                    if (!(val instanceof String)) {
+                    if (!(val instanceof CharSequence)) {
                         throw new AssertionError(String.format("Expected value of type string at path \"%s\", but actual type was \"%s\"%s",
                                 jsonPath, resolveActualTypeName(val), val == null ? "" : " (" + val + ")"));
                     }
-                    return (String) val;
+                    return ((CharSequence) val).toString();
                 })));
                 return this;
             });
@@ -174,7 +178,7 @@ public interface JsonAssured {
         JsonPathAssertions longArrayPath(@Language("jsonpath") String jsonPath, ThrowingConsumer<JsonNumberArrayAssertions<Long>> consumer) {
             return InternalUtils.sneakyGet(() -> {
                 consumer.accept(new JsonNumberArrayAssertions<>(jsonPath, "Long", new MemoizedSupplier<>(() -> {
-                    var val = contextSupplier.get().read(jsonPath, Object.class);
+                    var val = readVal(jsonPath);
                     if (val instanceof Iterable<?>) {
                         var items = (Iterable<?>) val;
                         var objects = new ArrayList<Long>();
@@ -248,19 +252,36 @@ public interface JsonAssured {
         }
 
         JsonPathAssertions isNull(@Language("jsonpath") String jsonPath) {
-            var val = contextSupplier.get().read(jsonPath, Object.class);
+            var val = readVal(jsonPath);
             if (val == null) {
                 return this;
             }
-            throw new AssertionError(String.format("Expected value at path \"%s\" to be null, but actual value was %s", jsonPath, val));
+            throw new AssertionError(String.format("Expected value at path \"%s\" to be null, but actual value was <%s>", jsonPath, val));
         }
 
         JsonPathAssertions isNotNull(@Language("jsonpath") String jsonPath) {
-            var val = contextSupplier.get().read(jsonPath, Object.class);
-            if (val != null) {
+            if (readVal(jsonPath) != null) {
                 return this;
             }
             throw new AssertionError(String.format("Expected value at path \"%s\" to be non-null, but actual value was null", jsonPath));
+        }
+
+        JsonPathAssertions isEqual(String jsonPath, CharSequence expected) {
+            if (expected == null) {
+                throw new IllegalArgumentException("\"null\" expected values are not supported. Consider using `JsonPathAssertions#isNull()` instead");
+            }
+            var actual = readVal(jsonPath);
+            if (actual instanceof CharSequence) {
+                var expectedStr = expected.toString();
+                if (actual.equals(expectedStr)) {
+                    return this;
+                } else {
+                    throw new AssertionError(String.format("String value at path \"%s\" are not equal: %s",
+                            jsonPath, InternalUtils.formatActualExpected(actual, expectedStr)));
+                }
+            }
+            throw new AssertionError(String.format("Expected value of type string at path \"%s\", but actual type was \"%s\"%s",
+                    jsonPath, resolveActualTypeName(actual), actual == null ? "" : " (" + actual + ")"));
         }
     }
 
@@ -369,7 +390,7 @@ public interface JsonAssured {
             if (actual.equals(expectedStr)) {
                 return this;
             }
-            throw new AssertionError(String.format("String value at path \"%s\" are not equal:%s", path, InternalUtils.formatActualExpected(actual, expectedStr)));
+            throw new AssertionError(String.format("String value at path \"%s\" are not equal: %s", path, InternalUtils.formatActualExpected(actual, expectedStr)));
         }
 
         public JsonStringAssertions isNotEqualTo(CharSequence expected) {
@@ -627,7 +648,7 @@ public interface JsonAssured {
                 try {
                     accept(t);
                 } catch (Throwable e) {
-                    InternalUtils.sneakyThrow(e);
+                    InternalUtils.rethrow(e);
                 }
             };
         }
@@ -662,136 +683,3 @@ final class MemoizedSupplier<T> implements Supplier<T> {
     }
 }
 
-interface InternalUtils {
-
-    static <T extends Throwable, R> R sneakyThrow(Throwable t) throws T {
-        @SuppressWarnings("unchecked")
-        var res = (T) t;
-        throw res;
-    }
-
-    static <T> T sneakyGet(JsonAssured.ThrowingSupplier<T> supplier) {
-        try {
-            return supplier.get();
-        } catch (Throwable e) {
-            return sneakyThrow(e);
-        }
-    }
-
-    static <T, R> R isIn(T actual, Iterable<T> expected, R response) {
-        for (var n : expected) {
-            if (n.equals(actual)) {
-                return response;
-            }
-        }
-        throw new AssertionError("");
-    }
-
-
-    static <R> R hasSize(R toReturn,
-                         Supplier<? extends List<?>> subjectSupplier,
-                         int expectedSize,
-                         String path,
-                         String arrayType) {
-        var subject = subjectSupplier.get();
-        if (subject.size() == expectedSize) {
-            return toReturn;
-        }
-        throw new AssertionError(String.format("%s array at path \"%s\" has size %d, but expected size is %d",
-                arrayType, path, subject.size(), expectedSize));
-    }
-
-    static <E, R> R containsAll(R toReturn,
-                                Supplier<? extends List<E>> subjectSupplier,
-                                Stream<E> expected,
-                                String path,
-                                String arrayType) {
-        var subject = subjectSupplier.get();
-        var expectedList = expected.toList();
-        if (expectedList.isEmpty()) {
-            throw new IllegalArgumentException("Array of expected values cannot be empty");
-        }
-        if (subject.isEmpty()) {
-            return toReturn;
-        }
-        for (var actual : subject) {
-            var found = false;
-            for (var expectedVal : expectedList) {
-                if (actual.equals(expectedVal)) {
-                    found = true;
-                    break;
-                }
-            }
-            if (found) {
-                return toReturn;
-            }
-        }
-        throw new AssertionError(String.format("%s array at path \"%s\" does not contain some of expected values",
-                arrayType, path));
-    }
-
-    static <E, R> R containsAny(R toReturn,
-                                Supplier<? extends List<E>> subjectSupplier,
-                                Stream<E> expected,
-                                String path,
-                                String arrayType) {
-        var subject = subjectSupplier.get();
-        var expectedList = expected.toList();
-        if (expectedList.isEmpty()) {
-            throw new IllegalArgumentException("Array of expected values cannot be empty");
-        }
-        if (subject.isEmpty()) {
-            return toReturn;
-        }
-        for (var actual : subject) {
-            for (var expectedVal : expectedList) {
-                if (actual.equals(expectedVal)) {
-                    return toReturn;
-                }
-            }
-        }
-        throw new AssertionError(String.format("%s array at path \"%s\" does not contain any of expected values",
-                arrayType, path));
-    }
-
-    static <E, R> R allSatisfy(R toReturn,
-                               Supplier<? extends List<E>> subjectSupplier,
-                               JsonAssured.ThrowingConsumer<E> consumer) {
-        var subject = subjectSupplier.get();
-        for (var actual : subject) {
-            try {
-                consumer.toUnchecked().accept(actual);
-            } catch (Throwable e) {
-                throw new AssertionError("Not satisfied", e);
-            }
-        }
-        return toReturn;
-    }
-
-    static <E, R> R anySatisfy(R toReturn,
-                               Supplier<? extends List<E>> subjectSupplier,
-                               JsonAssured.ThrowingConsumer<E> consumer) {
-        var subject = subjectSupplier.get();
-        for (var actual : subject) {
-            try {
-                consumer.toUnchecked().accept(actual);
-                return toReturn;
-            } catch (Throwable e) {
-                throw new AssertionError("Not satisfied", e);
-            }
-        }
-        return toReturn;
-    }
-
-    static <E, R> R satisfy(R toReturn,
-                            Supplier<? extends List<E>> subjectSupplier,
-                            JsonAssured.ThrowingConsumer<List<E>> consumer) {
-        var subject = subjectSupplier.get();
-        consumer.toUnchecked().accept(subject);
-        return toReturn;
-    }
-
-    static String formatActualExpected(Object actual, Object expected) {
-        return String.format(" Expected: <%s> but was: <%s>", expected, actual);
-    }
-}

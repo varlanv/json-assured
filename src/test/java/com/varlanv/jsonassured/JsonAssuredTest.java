@@ -52,6 +52,7 @@ class JsonAssuredTest {
                 ]
             }""";
 
+    static JsonAssured.JsonPathAssertions subject = JsonAssured.assertJson(jsonAllTypes);
 
     static Stream<JsonAssured.JsonPathAssertions> test_happy() {
         var bytes = jsonAllTypes.getBytes(StandardCharsets.UTF_8);
@@ -72,6 +73,7 @@ class JsonAssuredTest {
                 .isNull("$.nullVal")
                 .isNotNull("$.objectVal").isNotNull("$.stringsArray").isNotNull("$.objectsArray").isNotNull("$.booleanFalse")
                 .isNotNull("$.stringVal").isNotNull("$.zeroIntVal").isNotNull("$.decimalAsStringVal").isNotNull("$.booleanTrue")
+                .isEqual("$.stringVal", "sTr")
                 .stringPath("$.stringVal", strVal -> strVal
                         .isEqualTo("sTr").isNotEqualTo("str")
                         .isEqualToIgnoringCase("str").isNotEqualToIgnoringCase("st")
@@ -81,6 +83,7 @@ class JsonAssuredTest {
                         .hasLengthRange(2, 4)
                         .hasMinLength(1).hasMinLength(2).hasMinLength(3)
                         .hasMaxLength(3).hasMaxLength(4).hasMaxLength(5)
+                        .isIn(List.of("sTr", "stTr", "sT"))
                         .isIn(List.of("sTr")).isIn(List.of("sTr", "stTr", "sT"))
                         .isNotIn(List.of("str", "stTr", "sT"))
                         .matches("^[a-zA-Z]+$")
@@ -178,8 +181,6 @@ class JsonAssuredTest {
     @Nested
     class isTrue {
 
-        static JsonAssured.JsonPathAssertions subject = JsonAssured.assertJson(jsonAllTypes);
-
         @Test
         void when_val_is_false__then_fail() {
             var assertionError = Assertions.assertThrows(AssertionError.class, () -> subject.isTrue("$.booleanFalse"));
@@ -210,8 +211,6 @@ class JsonAssuredTest {
 
     @Nested
     class isFalse {
-
-        static JsonAssured.JsonPathAssertions subject = JsonAssured.assertJson(jsonAllTypes);
 
         @Test
         void when_val_is_true__then_fail() {
@@ -244,26 +243,82 @@ class JsonAssuredTest {
     @Nested
     class isNull {
 
-        static JsonAssured.JsonPathAssertions subject = JsonAssured.assertJson(jsonAllTypes);
-
         @Test
         void when_val_is_true__then_fail() {
             var assertionError = Assertions.assertThrows(AssertionError.class, () -> subject.isNull("$.booleanTrue"));
-            Assertions.assertEquals("Expected value at path \"$.booleanTrue\" to be null, but actual value was true", assertionError.getMessage());
+            Assertions.assertEquals("Expected value at path \"$.booleanTrue\" to be null, but actual value was <true>", assertionError.getMessage());
         }
 
         @Test
         void when_val_is_object__then_fail() {
             var assertionError = Assertions.assertThrows(AssertionError.class, () -> subject.isNull("$.objectVal"));
-            Assertions.assertEquals("Expected value at path \"$.objectVal\" to be null, but actual value was {nestedStringVal=str, nestedIntVal=123456789}",
+            Assertions.assertEquals("Expected value at path \"$.objectVal\" to be null, but actual value was <{nestedStringVal=str, nestedIntVal=123456789}>",
+                    assertionError.getMessage());
+        }
+    }
+
+    @Nested
+    class isEqual_string {
+
+        @Test
+        void when_null_jsonPath__then_fail() {
+            var assertionError = Assertions.assertThrows(IllegalArgumentException.class, () -> subject.isEqual(null, "str"));
+            Assertions.assertEquals("jsonPath should be non-null and non-blank", assertionError.getMessage());
+        }
+
+        @Test
+        void when_empty_jsonPath__then_fail() {
+            var assertionError = Assertions.assertThrows(IllegalArgumentException.class, () -> subject.isEqual("", "str"));
+            Assertions.assertEquals("jsonPath should be non-null and non-blank", assertionError.getMessage());
+        }
+
+        @Test
+        void when_blank_jsonPath__then_fail() {
+            var assertionError = Assertions.assertThrows(IllegalArgumentException.class, () -> subject.isEqual("  ", "str"));
+            Assertions.assertEquals("jsonPath should be non-null and non-blank", assertionError.getMessage());
+        }
+
+        @Test
+        void when_not_equal__then_fail() {
+            var assertionError = Assertions.assertThrows(AssertionError.class, () -> subject.isEqual("$.stringVal", "str"));
+            Assertions.assertEquals("String value at path \"$.stringVal\" are not equal: Expected: <str> but was: <sTr>", assertionError.getMessage());
+        }
+
+        @Test
+        void when_actual_is_null__then_fail() {
+            var assertionError = Assertions.assertThrows(AssertionError.class, () -> subject.isEqual("$.nullVal", "str"));
+            Assertions.assertEquals("Expected value of type string at path \"$.nullVal\", but actual type was \"null\"", assertionError.getMessage());
+        }
+
+        @Test
+        void when_expected_is_null__then_fail() {
+            var assertionError = Assertions.assertThrows(IllegalArgumentException.class, () -> subject.isEqual("$.nullVal", null));
+            Assertions.assertEquals("\"null\" expected values are not supported. Consider using `JsonPathAssertions#isNull()` instead", assertionError.getMessage());
+        }
+
+        @Test
+        void when_actual_is_number__then_fail() {
+            var assertionError = Assertions.assertThrows(AssertionError.class, () -> subject.isEqual("$.positiveIntVal", "str"));
+            Assertions.assertEquals("Expected value of type string at path \"$.positiveIntVal\", but actual type was \"number\" (123456789)", assertionError.getMessage());
+        }
+
+        @Test
+        void when_actual_is__object__then_fail() {
+            var assertionError = Assertions.assertThrows(AssertionError.class, () -> subject.isEqual("$.objectVal", "str"));
+            Assertions.assertEquals("Expected value of type string at path \"$.objectVal\", but actual type was \"object\" ({nestedStringVal=str, nestedIntVal=123456789})",
+                    assertionError.getMessage());
+        }
+
+        @Test
+        void when_actual_is__array__then_fail() {
+            var assertionError = Assertions.assertThrows(AssertionError.class, () -> subject.isEqual("$.stringsArray", "str"));
+            Assertions.assertEquals("Expected value of type string at path \"$.stringsArray\", but actual type was \"array\" ([\"a\",\"b\",\"c\"])",
                     assertionError.getMessage());
         }
     }
 
     @Nested
     class isNotNull {
-
-        static JsonAssured.JsonPathAssertions subject = JsonAssured.assertJson(jsonAllTypes);
 
         @Test
         void when_val_is_null__then_fail() {
@@ -281,8 +336,6 @@ class JsonAssuredTest {
 
     @Nested
     class stringPath {
-
-        static JsonAssured.JsonPathAssertions subject = JsonAssured.assertJson(jsonAllTypes);
 
         @Test
         void when_int_type__then_fail() {
@@ -334,8 +387,6 @@ class JsonAssuredTest {
 
     @Nested
     class doesNotExist {
-
-        static JsonAssured.JsonPathAssertions subject = JsonAssured.assertJson(jsonAllTypes);
 
         @Test
         void when_not_exists__then_ok() {

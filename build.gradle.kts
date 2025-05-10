@@ -25,6 +25,10 @@ tasks.named<JavaCompile>("compileTestJava", {
     finalizedBy("spotbugsTest")
 })
 
+tasks.named<Test>("test", {
+    jvmArgs("-XX:TieredStopAtLevel=1", "-noverify")
+})
+
 dependencies {
     compileOnly("org.springframework:spring-test:5.3.39")
     testImplementation("org.springframework:spring-test:5.3.39")
@@ -38,4 +42,5 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+
 }

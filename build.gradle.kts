@@ -1,7 +1,10 @@
+import com.diffplug.gradle.spotless.SpotlessExtension
+
 plugins {
     id("java")
     id("com.github.spotbugs") version "6.1.11"
     id("com.gradleup.shadow") version "8.3.5"
+    id("com.diffplug.spotless") version "7.0.3"
 }
 
 group = "com.varlanv"
@@ -15,6 +18,8 @@ tasks.named<JavaCompile>("compileJava", {
     options.compilerArgs.add("-Xlint:all")
     options.compilerArgs.add("-Werror")
     options.release = 11
+    shouldRunAfter("spotlessApply")
+    dependsOn("spotlessApply")
     finalizedBy("spotbugsMain")
 })
 
@@ -38,6 +43,15 @@ dependencies {
     testCompileOnly("org.jetbrains:annotations:26.0.2")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+}
+
+extensions.configure<SpotlessExtension> {
+    java {
+        importOrder()
+        removeUnusedImports()
+        googleJavaFormat()
+        formatAnnotations()
+    }
 }
 
 tasks.test {

@@ -96,12 +96,15 @@ class JsonAssuredTest {
                     .containsIgnoringCase("st")
                     .hasLength(3)
                     .hasLengthRange(2, 4)
-                    .hasMinLength(1)
-                    .hasMinLength(2)
-                    .hasMinLength(3)
-                    .hasMaxLength(3)
-                    .hasMaxLength(4)
-                    .hasMaxLength(5)
+                    .hasLengthRange(3, 3)
+                    .hasLengthRange(3, 5)
+                    .hasLengthRange(2, 3)
+                    .hasLengthAtLeast(1)
+                    .hasLengthAtLeast(2)
+                    .hasLengthAtLeast(3)
+                    .hasLengthAtMost(3)
+                    .hasLengthAtMost(4)
+                    .hasLengthAtMost(5)
                     .isIn(List.of("sTr", "stTr", "sT"))
                     .isIn(List.of("sTr"))
                     .isIn(List.of("sTr", "stTr", "sT"))
@@ -558,21 +561,15 @@ class JsonAssuredTest {
 
       Assertions.assertEquals(
           String.format(
-              "String value at path \"$.stringVal\" is equal to <%s> (ignoring case, while expected to be not equal",
+              "String value at path \"$.stringVal\" is equal to <%s> (ignoring case), while expected to be not equal",
               expected),
           assertionError.getMessage());
     }
 
     @ParameterizedTest
-    @ArgumentsSource(NonNullBlankString.class)
+    @ArgumentsSource(NonNullBlankStrings.class)
     void isBlank__when_blank__then_ok(String blankString) {
-      var jsonWithBlank =
-          String.format(
-              """
-                                    {
-                                    "stringVal": "%s"
-                                    }""",
-              blankString);
+      var jsonWithBlank = "{" + "\"stringVal\": \"" + blankString + "\"" + "}";
       var subject = JsonAssured.assertJson(jsonWithBlank);
 
       Assertions.assertDoesNotThrow(
@@ -592,15 +589,9 @@ class JsonAssuredTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(NonNullBlankString.class)
+    @ArgumentsSource(NonNullBlankStrings.class)
     void isNotBlank__when_blank__then_fail(String blankString) {
-      var jsonWithBlank =
-          String.format(
-              """
-                                    {
-                                    "stringVal": "%s"
-                                    }""",
-              blankString);
+      var jsonWithBlank = "{" + "\"stringVal\": \"" + blankString + "\"" + "}";
       var subject = JsonAssured.assertJson(jsonWithBlank);
 
       var assertionError =
@@ -620,6 +611,297 @@ class JsonAssuredTest {
     void isNotBlank__when_not_blank__then_ok() {
       Assertions.assertDoesNotThrow(
           () -> subject.stringPath("$.stringVal", JsonAssured.JsonStringAssertions::isNotBlank));
+    }
+
+    @Test
+    void isEmpty__when_empty__then_ok() {
+      var jsonWithEmpty = "{" + "\"stringVal\": \"" + "\"" + "}";
+      var subject = JsonAssured.assertJson(jsonWithEmpty);
+
+      Assertions.assertDoesNotThrow(
+          () -> subject.stringPath("$.stringVal", JsonAssured.JsonStringAssertions::isEmpty));
+    }
+
+    @Test
+    void isEmpty__when_not_empty__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.stringPath("$.stringVal", JsonAssured.JsonStringAssertions::isEmpty));
+
+      Assertions.assertEquals(
+          "Expected string at path \"$.stringVal\" to be empty, but actual value was <sTr>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNotEmpty__when_empty__then_fail() {
+      var jsonWithBlank = "{" + "\"stringVal\": \"" + "\"" + "}";
+      var subject = JsonAssured.assertJson(jsonWithBlank);
+
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.stringPath("$.stringVal", JsonAssured.JsonStringAssertions::isNotEmpty));
+
+      Assertions.assertEquals(
+          String.format(
+              "Expected string at path \"$.stringVal\" to be not empty, but actual value was empty"),
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNotEmpty__when_not_empty__then_ok() {
+      Assertions.assertDoesNotThrow(
+          () -> subject.stringPath("$.stringVal", JsonAssured.JsonStringAssertions::isNotEmpty));
+    }
+
+    @Test
+    void hasLength__when_not_matches__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.stringPath("$.stringVal", stringVal -> stringVal.hasLength(10)));
+
+      Assertions.assertEquals(
+          "Expected string at path \"$.stringVal\" to have length [10], but actual length was [3]",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void hasLength__when_length_is_negative__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.stringPath("$.stringVal", stringVal -> stringVal.hasLength(-1)));
+
+      Assertions.assertEquals(
+          "Length cannot be negative (received -1)", assertionError.getMessage());
+    }
+
+    @Test
+    void hasLength__when_length_matches__then_ok() {
+      Assertions.assertDoesNotThrow(
+          () -> subject.stringPath("$.stringVal", stringVal -> stringVal.hasLength(3)));
+    }
+
+    @Test
+    void hasLengthRange__when_range_matches__then_ok() {
+      Assertions.assertDoesNotThrow(
+          () -> subject.stringPath("$.stringVal", stringVal -> stringVal.hasLengthRange(2, 3)));
+    }
+
+    @Test
+    void hasLengthRange__when_min_length_is_negative__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  subject.stringPath("$.stringVal", stringVal -> stringVal.hasLengthRange(-2, 10)));
+
+      Assertions.assertEquals(
+          "Min length cannot be negative (received -2)", assertionError.getMessage());
+    }
+
+    @Test
+    void hasLengthRange__when_max_length_is_negative__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  subject.stringPath("$.stringVal", stringVal -> stringVal.hasLengthRange(10, -1)));
+
+      Assertions.assertEquals(
+          "Max length cannot be negative (received -1)", assertionError.getMessage());
+    }
+
+    @Test
+    void hasLengthRange__when_max_less_than_min__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.stringPath("$.stringVal", stringVal -> stringVal.hasLengthRange(1, 0)));
+
+      Assertions.assertEquals(
+          "Min length cannot be greater than max length (received 1 > 0)",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void hasLengthRange__when__lower_mismatch__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.stringPath("$.stringVal", stringVal -> stringVal.hasLengthRange(1, 2)));
+
+      Assertions.assertEquals(
+          "Expected string at path \"$.stringVal\" to be in range [1 - 2], but actual length was [3]",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void hasLengthRange__when__upper_mismatch__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.stringPath("$.stringVal", stringVal -> stringVal.hasLengthRange(4, 5)));
+
+      Assertions.assertEquals(
+          "Expected string at path \"$.stringVal\" to be in range [4 - 5], but actual length was [3]",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void hasLengthAtLeast__when_min_length_is_negative__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.stringPath("$.stringVal", stringVal -> stringVal.hasLengthAtLeast(-1)));
+
+      Assertions.assertEquals(
+          "Min length cannot be negative (received -1)", assertionError.getMessage());
+    }
+
+    @Test
+    void hasLengthAtLeast__when_not_matches__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.stringPath("$.stringVal", stringVal -> stringVal.hasLengthAtLeast(4)));
+
+      Assertions.assertEquals(
+          "Expected string at path \"$.stringVal\" to have min length [3], but actual length was [4]",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void hasLengthAtMost__when_min_length_is_negative__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.stringPath("$.stringVal", stringVal -> stringVal.hasLengthAtMost(-10)));
+
+      Assertions.assertEquals(
+          "Max length cannot be negative (received -10)", assertionError.getMessage());
+    }
+
+    @Test
+    void hasLengthAtMost__when_not_matches__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.stringPath("$.stringVal", stringVal -> stringVal.hasLengthAtMost(2)));
+
+      Assertions.assertEquals(
+          "Expected string at path \"$.stringVal\" to have max length [3], but actual length was [2]",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void contains__when_not_contain__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.stringPath("$.stringVal", stringVal -> stringVal.contains("str")));
+
+      Assertions.assertEquals(
+          "String value at path \"$.stringVal\" does not contain expected string: Expected: <str> but was: <sTr>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void containsIgnoringCase__when_not_contain__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.stringPath(
+                      "$.stringVal", stringVal -> stringVal.containsIgnoringCase("abcd")));
+
+      Assertions.assertEquals(
+          "String value at path \"$.stringVal\" does not contain expected string (ignoring case): Expected: <abcd> but was: <sTr>",
+          assertionError.getMessage());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"sTrr", ".qweq"})
+    void matches__when_not_matches__then_fail(String pattern) {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.stringPath("$.stringVal", stringVal -> stringVal.matches(pattern)));
+
+      Assertions.assertEquals(
+          String.format(
+              "String value at path \"$.stringVal\" does not match expected pattern. Expected pattern: <%s>, actual value: <sTr>",
+              pattern),
+          assertionError.getMessage());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"sTr", ".*"})
+    void doesNotMatch__when_matches__then_fail(String pattern) {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.stringPath("$.stringVal", stringVal -> stringVal.doesNotMatch(pattern)));
+
+      Assertions.assertEquals(
+          String.format(
+              String.format(
+                  "String value at path \"$.stringVal\" matches expected pattern, while expected to not match. Pattern: <%s>, actual value: <sTr>",
+                  pattern),
+              pattern),
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isIn__when_not_in__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.stringPath(
+                      "$.stringVal", stringVal -> stringVal.isIn(List.of("a", "str", "b"))));
+
+      Assertions.assertEquals(
+          "String value at path \"$.stringVal\" is not in the list of expected values. Actual value: <sTr>, list of expected values: <[a, str, b]>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNotIn__when_in__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.stringPath(
+                      "$.stringVal",
+                      stringVal -> stringVal.isNotIn(List.of("a", "str", "sTr", "b"))));
+
+      Assertions.assertEquals(
+          "String value at path \"$.stringVal\" was found in provided list at index [2]. Actual value: <sTr>, list of values: <[a, str, sTr, b]>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void satisfies__when_not_satisfy_then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.stringPath(
+                      "$.stringVal",
+                      stringVal ->
+                          stringVal.satisfies(val -> Assertions.assertEquals("str", val))));
+
+      Assertions.assertEquals(
+          "String value at path \"$.stringVal\" did not satisfy provided condition",
+          assertionError.getMessage());
+      Assertions.assertEquals(
+          "expected: <str> but was: <sTr>", assertionError.getCause().getMessage());
     }
   }
 
@@ -686,16 +968,21 @@ class JsonAssuredTest {
     @Override
     public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext)
         throws Exception {
-      return Stream.of("", "  ", "\t", "\n", null).map(Arguments::of);
+      return Stream.concat(NonNullBlankStrings.strings(), Stream.builder().add(null).build())
+          .map(Arguments::of);
     }
   }
 
-  static class NonNullBlankString implements ArgumentsProvider {
+  static class NonNullBlankStrings implements ArgumentsProvider {
 
     @Override
     public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext)
         throws Exception {
-      return Stream.of("", "  ", "\t", "\n").map(Arguments::of);
+      return strings().map(Arguments::of);
+    }
+
+    static Stream<String> strings() {
+      return Stream.of("", "  ", "\t", "\n");
     }
   }
 }

@@ -319,7 +319,7 @@ public interface JsonAssured {
           });
     }
 
-    JsonPathAssertions doesNotExist(String jsonPath) {
+    JsonPathAssertions doesNotExist(@Language("jsonpath") String jsonPath) {
       try {
         var val = readVal(jsonPath);
         throw new AssertionError(
@@ -370,7 +370,7 @@ public interface JsonAssured {
               "Expected value at path \"%s\" to be non-null, but actual value was null", jsonPath));
     }
 
-    JsonPathAssertions isEqual(String jsonPath, CharSequence expected) {
+    JsonPathAssertions isEqual(@Language("jsonpath") String jsonPath, CharSequence expected) {
       if (expected == null) {
         throw new IllegalArgumentException(
             "\"null\" expected values are not supported. Consider using `JsonPathAssertions#isNull()` instead");
@@ -541,8 +541,8 @@ public interface JsonAssured {
       }
       throw new AssertionError(
           String.format(
-              "String value at path \"%s\" is equal to <%s> (ignoring case, while expected to be not equal",
-              path, expected, InternalUtils.formatActualExpected(actual, expectedStr)));
+              "String value at path \"%s\" is equal to <%s> (ignoring case), while expected to be not equal",
+              path, expected));
     }
 
     public JsonStringAssertions isNotBlank() {
@@ -569,12 +569,13 @@ public interface JsonAssured {
 
     public JsonStringAssertions isEmpty() {
       var subject = stringSupplier.get();
-      if (!subject.isEmpty()) {
+      if (subject.isEmpty()) {
         return this;
       }
       throw new AssertionError(
           String.format(
-              "Expected string at path \"%s\" to be empty, but actual value was not empty", path));
+              "Expected string at path \"%s\" to be empty, but actual value was <%s>",
+              path, subject));
     }
 
     public JsonStringAssertions isNotEmpty() {
@@ -588,106 +589,159 @@ public interface JsonAssured {
     }
 
     public JsonStringAssertions hasLength(int length) {
-      if (stringSupplier.get().length() == length) {
+      if (length < 0) {
+        throw new IllegalArgumentException(
+            String.format("Length cannot be negative (received %d)", length));
+      }
+      var actual = stringSupplier.get().length();
+      if (actual == length) {
         return this;
       }
       throw new AssertionError(
           String.format(
-              "String at path \"%s\" has length %d, but expected length is %d",
-              path, stringSupplier.get().length(), length));
+              "Expected string at path \"%s\" to have length [%d], but actual length was [%d]",
+              path, length, actual));
     }
 
     public JsonStringAssertions hasLengthRange(int lengthMin, int lengthMax) {
+      if (lengthMin < 0) {
+        throw new IllegalArgumentException(
+            String.format("Min length cannot be negative (received %d)", lengthMin));
+      } else if (lengthMax < 0) {
+        throw new IllegalArgumentException(
+            String.format("Max length cannot be negative (received %d)", lengthMax));
+      } else if (lengthMin > lengthMax) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Min length cannot be greater than max length (received %d > %d)",
+                lengthMin, lengthMax));
+      }
       var actual = stringSupplier.get();
       if (actual.length() >= lengthMin && actual.length() <= lengthMax) {
         return this;
       }
       throw new AssertionError(
           String.format(
-              "String at path \"%s\" has length %d, but expected length range is [%d, %d]",
-              path, actual.length(), lengthMin, lengthMax));
+              "Expected string at path \"%s\" to be in range [%d - %d], but actual length was [%d]",
+              path, lengthMin, lengthMax, actual.length()));
     }
 
-    public JsonStringAssertions hasMinLength(int lengthMin) {
-      if (stringSupplier.get().length() >= lengthMin) {
+    public JsonStringAssertions hasLengthAtLeast(int lengthMin) {
+      if (lengthMin < 0) {
+        throw new IllegalArgumentException(
+            String.format("Min length cannot be negative (received %d)", lengthMin));
+      }
+      var actualLength = stringSupplier.get().length();
+      if (actualLength >= lengthMin) {
         return this;
       }
       throw new AssertionError(
           String.format(
-              "String at path \"%s\" has length %d, but expected min length is %d",
-              path, stringSupplier.get().length(), lengthMin));
+              "Expected string at path \"%s\" to have min length [%d], but actual length was [%d]",
+              path, actualLength, lengthMin));
     }
 
-    public JsonStringAssertions hasMaxLength(int lengthMax) {
-      if (stringSupplier.get().length() <= lengthMax) {
+    public JsonStringAssertions hasLengthAtMost(int lengthMax) {
+      if (lengthMax < 0) {
+        throw new IllegalArgumentException(
+            String.format("Max length cannot be negative (received %d)", lengthMax));
+      }
+      var actualLength = stringSupplier.get().length();
+      if (actualLength <= lengthMax) {
         return this;
       }
       throw new AssertionError(
           String.format(
-              "String at path \"%s\" has length %d, but expected max length is %d",
-              path, stringSupplier.get().length(), lengthMax));
+              "Expected string at path \"%s\" to have max length [%d], but actual length was [%d]",
+              path, actualLength, lengthMax));
     }
 
     public JsonStringAssertions contains(CharSequence expected) {
-      var actual = stringSupplier.get();
-      var expectedVal = expected.toString();
-      if (actual.contains(expectedVal)) {
-        return this;
-      }
-      throw new AssertionError(
-          String.format("String at path \"%s\" does not contain \"%s\"", path, expectedVal));
-    }
-
-    public JsonStringAssertions containsIgnoringCase(CharSequence expected) {
-      var actual = stringSupplier.get();
-      var expectedVal = expected.toString();
-      var expectedLower = expectedVal.toLowerCase();
-      if (actual.toLowerCase().contains(expectedLower)) {
+      var actualStr = stringSupplier.get();
+      var expectedStr = expected.toString();
+      if (actualStr.contains(expectedStr)) {
         return this;
       }
       throw new AssertionError(
           String.format(
-              "String at path \"%s\" does not contain \"%s\" (ignoring case)", path, expectedVal));
+              "String value at path \"%s\" does not contain expected string: %s",
+              path, InternalUtils.formatActualExpected(actualStr, expected)));
+    }
+
+    public JsonStringAssertions containsIgnoringCase(CharSequence expected) {
+      var actualStr = stringSupplier.get();
+      var expectedStr = expected.toString();
+      var expectedLower = expectedStr.toLowerCase();
+      if (actualStr.toLowerCase().contains(expectedLower)) {
+        return this;
+      }
+      throw new AssertionError(
+          String.format(
+              "String value at path \"%s\" does not contain expected string (ignoring case): %s",
+              path, InternalUtils.formatActualExpected(actualStr, expectedStr)));
     }
 
     public JsonStringAssertions matches(@Language("regexp") String pattern) {
-      if (stringSupplier.get().matches(pattern)) {
+      var actualStr = stringSupplier.get();
+      if (actualStr.matches(pattern)) {
         return this;
       }
       throw new AssertionError(
-          String.format("String at path \"%s\" does not match pattern \"%s\"", path, pattern));
+          String.format(
+              "String value at path \"%s\" does not match expected pattern. Expected pattern: <%s>, actual value: <%s>",
+              path, pattern, actualStr));
     }
 
     public JsonStringAssertions doesNotMatch(@Language("regexp") String pattern) {
-      if (!stringSupplier.get().matches(pattern)) {
+      var actualStr = stringSupplier.get();
+      if (!actualStr.matches(pattern)) {
         return this;
       }
       throw new AssertionError(
-          String.format("String at path \"%s\" matches pattern \"%s\"", path, pattern));
+          String.format(
+              "String value at path \"%s\" matches expected pattern, while expected to not match. Pattern: <%s>, actual value: <%s>",
+              path, pattern, actualStr));
     }
 
     public JsonStringAssertions isIn(Iterable<? extends CharSequence> expected) {
-      var actual = stringSupplier.get();
-      for (var n : expected) {
-        if (n.toString().equals(actual)) {
+      var actualStr = stringSupplier.get();
+      var expectedStrings = InternalUtils.listFromIterable(expected, CharSequence::toString);
+      for (var expectedStr : expectedStrings) {
+        if (expectedStr.equals(actualStr)) {
           return this;
         }
       }
-      throw new AssertionError("Not in");
+      throw new AssertionError(
+          String.format(
+              "String value at path \"%s\" is not in the list of expected values. Actual value: <%s>, list of expected values: <%s>",
+              path, actualStr, expectedStrings));
     }
 
     public JsonStringAssertions isNotIn(Iterable<? extends CharSequence> expected) {
-      var actual = stringSupplier.get();
-      for (var n : expected) {
-        if (n.toString().equals(actual)) {
-          throw new AssertionError("Not in");
+      var actualStr = stringSupplier.get();
+      var expectedStrings = InternalUtils.listFromIterable(expected, CharSequence::toString);
+      var counter = 0;
+      for (var expectedStr : expectedStrings) {
+        if (expectedStr.equals(actualStr)) {
+          throw new AssertionError(
+              String.format(
+                  "String value at path \"%s\" was found in provided list at index [%d]. Actual value: <%s>, list of values: <%s>",
+                  path, counter, actualStr, expectedStrings));
         }
+        counter++;
       }
       return this;
     }
 
     public JsonStringAssertions satisfies(ThrowingConsumer<String> consumer) {
-      consumer.toUnchecked().accept(stringSupplier.get());
+      try {
+        consumer.toUnchecked().accept(stringSupplier.get());
+      } catch (Throwable t) {
+        InternalUtils.rethrowUnrecoverable(t);
+        throw new AssertionError(
+            String.format("String value at path \"%s\" did not satisfy provided condition", path),
+            t);
+      }
       return this;
     }
   }

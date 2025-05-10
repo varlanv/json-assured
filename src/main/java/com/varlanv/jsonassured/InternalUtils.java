@@ -1,16 +1,25 @@
 package com.varlanv.jsonassured;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 interface InternalUtils {
 
-  static <T extends Throwable, R> R rethrow(Throwable t) throws T {
+  static <T extends Throwable, R> R rethrow(Throwable exception) throws T {
     @SuppressWarnings("unchecked")
-    var res = (T) t;
+    var res = (T) exception;
     throw res;
+  }
+
+  static void rethrowUnrecoverable(Throwable exception) {
+    if (exception instanceof OutOfMemoryError) {
+      rethrow(exception);
+    }
   }
 
   static <T> T sneakyGet(JsonAssured.ThrowingSupplier<T> supplier) {
@@ -139,6 +148,25 @@ interface InternalUtils {
 
   static String formatActualExpected(Object actual, Object expected) {
     return String.format("Expected: <%s> but was: <%s>", expected, actual);
+  }
+
+  static <T, R> List<R> listFromIterable(Iterable<T> iterable, Function<T, R> mapper) {
+    var objects =
+        new ArrayList<R>(iterable instanceof Collection ? ((Collection<?>) iterable).size() : 10);
+    var counter = 0;
+    for (var t : iterable) {
+      if (t == null) {
+        throw new IllegalArgumentException(
+            "Array of expected values cannot contain null elements, "
+                + String.format("but found null element at index [%d]", counter));
+      }
+      objects.add(mapper.apply(t));
+    }
+    return objects;
+  }
+
+  static <T> List<T> listFromIterable(Iterable<T> iterable) {
+    return listFromIterable(iterable, Function.identity());
   }
 
   static <E> List<E> streamToList(Stream<E> expected) {

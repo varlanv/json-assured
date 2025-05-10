@@ -10,47 +10,47 @@ import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.*;
 
 class JsonAssuredTest {
 
   @Language("json")
   private static final String jsonAllTypes =
       """
-            {
-            "stringVal": "sTr",
-            "zeroIntVal": 0,
-            "zeroDecimalVal": 0.0,
-            "intAsStringVal": "1234",
-            "decimalAsStringVal": "1234.5678",
-            "positiveIntVal": 123456789,
-            "negativeIntVal": -123456789,
-            "positiveLongVal": 1234567890123456,
-            "negativeLongVal": -1234567890123456,
-            "positiveDecimalVal" : 123456789.123456789,
-            "negativeDecimalVal" : -123456789.123456789,
-            "booleanTrue": true,
-            "booleanFalse": false,
-            "nullVal": null,
-            "objectVal": {
-              "nestedStringVal": "str",
-              "nestedIntVal": 123456789
-            },
-            "stringsArray": ["a","b","c"],
-            "intArray": [1, 2, 3],
-            "longArray": [1234567890123456],
-            "decimalArray": [123456789.123456789, 123456789.223456789],
-            "objectsArray": [
-                {
-                  "nestedIntVal": 1234567
-                },
-                {
-                  "nestedIntVal": 12345678
-                }
-                ]
-            }""";
+                    {
+                    "stringVal": "sTr",
+                    "zeroIntVal": 0,
+                    "zeroDecimalVal": 0.0,
+                    "intAsStringVal": "1234",
+                    "decimalAsStringVal": "1234.5678",
+                    "positiveIntVal": 123456789,
+                    "negativeIntVal": -123456789,
+                    "positiveLongVal": 1234567890123456,
+                    "negativeLongVal": -1234567890123456,
+                    "positiveDecimalVal" : 123456789.123456789,
+                    "negativeDecimalVal" : -123456789.123456789,
+                    "booleanTrue": true,
+                    "booleanFalse": false,
+                    "nullVal": null,
+                    "objectVal": {
+                      "nestedStringVal": "str",
+                      "nestedIntVal": 123456789
+                    },
+                    "stringsArray": ["a","b","c"],
+                    "intArray": [1, 2, 3],
+                    "longArray": [1234567890123456],
+                    "decimalArray": [123456789.123456789, 123456789.223456789],
+                    "objectsArray": [
+                        {
+                          "nestedIntVal": 1234567
+                        },
+                        {
+                          "nestedIntVal": 12345678
+                        }
+                        ]
+                    }""";
 
   static JsonAssured.JsonPathAssertions subject = JsonAssured.assertJson(jsonAllTypes);
 
@@ -352,28 +352,12 @@ class JsonAssuredTest {
   @Nested
   class isEqual_string {
 
-    @Test
-    void when_null_jsonPath__then_fail() {
+    @ParameterizedTest
+    @ArgumentsSource(NullableBlankStrings.class)
+    void when_blank_jsonPath__then_fail(String string) {
       var assertionError =
           Assertions.assertThrows(
-              IllegalArgumentException.class, () -> subject.isEqual(null, "str"));
-      Assertions.assertEquals(
-          "jsonPath should be non-null and non-blank", assertionError.getMessage());
-    }
-
-    @Test
-    void when_empty_jsonPath__then_fail() {
-      var assertionError =
-          Assertions.assertThrows(IllegalArgumentException.class, () -> subject.isEqual("", "str"));
-      Assertions.assertEquals(
-          "jsonPath should be non-null and non-blank", assertionError.getMessage());
-    }
-
-    @Test
-    void when_blank_jsonPath__then_fail() {
-      var assertionError =
-          Assertions.assertThrows(
-              IllegalArgumentException.class, () -> subject.isEqual("  ", "str"));
+              IllegalArgumentException.class, () -> subject.isEqual(string, "str"));
       Assertions.assertEquals(
           "jsonPath should be non-null and non-blank", assertionError.getMessage());
     }
@@ -510,6 +494,18 @@ class JsonAssuredTest {
     }
 
     @ParameterizedTest
+    @ArgumentsSource(NullableBlankStrings.class)
+    void isEqualTo__when_blank_jsonPath__then_fail(String blankString) {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> subject.stringPath(blankString, strVal -> strVal.isEqualTo("sTr")));
+
+      Assertions.assertEquals(
+          "jsonPath should be non-null and non-blank", assertionError.getMessage());
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"str", "STR", "qwe", "sTR"})
     void isEqualTo__when_not_equal__then_fail(String expected) {
       var assertionError =
@@ -519,7 +515,7 @@ class JsonAssuredTest {
 
       Assertions.assertEquals(
           String.format(
-              "String value at path \"$.stringVal\" are not equal: Expected: <%s> but was: <sTr>",
+              "String value at path \"$.stringVal\" is not equal to expected: Expected: <%s> but was: <sTr>",
               expected),
           assertionError.getMessage());
     }
@@ -535,14 +531,123 @@ class JsonAssuredTest {
           "String value at path \"$.stringVal\" is equal to <sTr>, while expected to be not equal",
           assertionError.getMessage());
     }
+
+    @Test
+    void isEqualToIgnoringCase__when_not_equal__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.stringPath(
+                      "$.stringVal", strVal -> strVal.isEqualToIgnoringCase("sTrq")));
+
+      Assertions.assertEquals(
+          "String value at path \"$.stringVal\" is not equal to expected (ignoring case): Expected: <sTrq> but was: <sTr>",
+          assertionError.getMessage());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"str", "STR", "sTR"})
+    void isNotEqualToIgnoringCase__when_not_equal__then_fail(String expected) {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.stringPath(
+                      "$.stringVal", strVal -> strVal.isNotEqualToIgnoringCase(expected)));
+
+      Assertions.assertEquals(
+          String.format(
+              "String value at path \"$.stringVal\" is equal to <%s> (ignoring case, while expected to be not equal",
+              expected),
+          assertionError.getMessage());
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(NonNullBlankString.class)
+    void isBlank__when_blank__then_ok(String blankString) {
+      var jsonWithBlank =
+          String.format(
+              """
+                                    {
+                                    "stringVal": "%s"
+                                    }""",
+              blankString);
+      var subject = JsonAssured.assertJson(jsonWithBlank);
+
+      Assertions.assertDoesNotThrow(
+          () -> subject.stringPath("$.stringVal", JsonAssured.JsonStringAssertions::isBlank));
+    }
+
+    @Test
+    void isBlank__when_not_blank__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.stringPath("$.stringVal", JsonAssured.JsonStringAssertions::isBlank));
+
+      Assertions.assertEquals(
+          "Expected string at path \"$.stringVal\" to be blank, but actual value was \"sTr\"",
+          assertionError.getMessage());
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(NonNullBlankString.class)
+    void isNotBlank__when_blank__then_fail(String blankString) {
+      var jsonWithBlank =
+          String.format(
+              """
+                                    {
+                                    "stringVal": "%s"
+                                    }""",
+              blankString);
+      var subject = JsonAssured.assertJson(jsonWithBlank);
+
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.stringPath("$.stringVal", JsonAssured.JsonStringAssertions::isNotBlank));
+
+      Assertions.assertEquals(
+          String.format(
+              "Expected string at path \"$.stringVal\" to be not blank, but actual value was \"%s\"",
+              blankString),
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNotBlank__when_not_blank__then_ok() {
+      Assertions.assertDoesNotThrow(
+          () -> subject.stringPath("$.stringVal", JsonAssured.JsonStringAssertions::isNotBlank));
+    }
   }
 
   @Nested
   class doesNotExist {
 
+    @ParameterizedTest
+    @ArgumentsSource(NullableBlankStrings.class)
+    void when_null_jsonPath__then_fail(String string) {
+      var assertionError =
+          Assertions.assertThrows(
+              IllegalArgumentException.class, () -> subject.doesNotExist(string));
+      Assertions.assertEquals(
+          "jsonPath should be non-null and non-blank", assertionError.getMessage());
+    }
+
     @Test
     void when_not_exists__then_ok() {
       Assertions.assertDoesNotThrow(() -> subject.doesNotExist("$.asdvz"));
+    }
+
+    @Test
+    void when_null_path__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(IllegalArgumentException.class, () -> subject.doesNotExist(null));
+
+      Assertions.assertEquals(
+          assertionError.getMessage(), "jsonPath should be non-null and non-blank");
     }
 
     @Test
@@ -573,6 +678,24 @@ class JsonAssuredTest {
       Assertions.assertEquals(
           "Expected value at path \"$.zeroIntVal\" to be absent, but found <0>",
           assertionError.getMessage());
+    }
+  }
+
+  static class NullableBlankStrings implements ArgumentsProvider {
+
+    @Override
+    public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext)
+        throws Exception {
+      return Stream.of("", "  ", "\t", "\n", null).map(Arguments::of);
+    }
+  }
+
+  static class NonNullBlankString implements ArgumentsProvider {
+
+    @Override
+    public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext)
+        throws Exception {
+      return Stream.of("", "  ", "\t", "\n").map(Arguments::of);
     }
   }
 }

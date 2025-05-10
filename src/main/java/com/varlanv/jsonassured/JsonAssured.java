@@ -319,13 +319,13 @@ public interface JsonAssured {
           });
     }
 
-    JsonPathAssertions doesNotExist(@Language("jsonpath") String jsonPath) {
+    JsonPathAssertions doesNotExist(String jsonPath) {
       try {
         var val = readVal(jsonPath);
         throw new AssertionError(
             String.format(
                 "Expected value at path \"%s\" to be absent, but found <%s>", jsonPath, val));
-      } catch (PathNotFoundException e) {
+      } catch (PathNotFoundException ignored) {
         return this;
       }
     }
@@ -507,7 +507,7 @@ public interface JsonAssured {
       }
       throw new AssertionError(
           String.format(
-              "String value at path \"%s\" are not equal: %s",
+              "String value at path \"%s\" is not equal to expected: %s",
               path, InternalUtils.formatActualExpected(actual, expectedStr)));
     }
 
@@ -522,20 +522,27 @@ public interface JsonAssured {
     }
 
     public JsonStringAssertions isEqualToIgnoringCase(CharSequence expected) {
-      if (stringSupplier.get().equalsIgnoreCase(expected.toString())) {
+      var actualString = stringSupplier.get();
+      var expectedString = expected.toString();
+      if (actualString.equalsIgnoreCase(expectedString)) {
         return this;
       }
       throw new AssertionError(
           String.format(
-              "String at path \"%s\" does not equal \"%s\" (ignoring case)", path, expected));
+              "String value at path \"%s\" is not equal to expected (ignoring case): %s",
+              path, InternalUtils.formatActualExpected(actualString, expectedString)));
     }
 
     public JsonStringAssertions isNotEqualToIgnoringCase(CharSequence expected) {
-      if (!stringSupplier.get().equalsIgnoreCase(expected.toString())) {
+      var actual = stringSupplier.get();
+      var expectedStr = expected.toString();
+      if (!actual.equalsIgnoreCase(expectedStr)) {
         return this;
       }
       throw new AssertionError(
-          String.format("String at path \"%s\" equal \"%s\" (ignoring case)", path, expected));
+          String.format(
+              "String value at path \"%s\" is equal to <%s> (ignoring case, while expected to be not equal",
+              path, expected, InternalUtils.formatActualExpected(actual, expectedStr)));
     }
 
     public JsonStringAssertions isNotBlank() {

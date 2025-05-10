@@ -21,6 +21,8 @@ class JsonAssuredTest {
   private static final String jsonAllTypes =
       """
                     {
+                    "blankStringVal": " \\n \\t ",
+                    "emptyStringVal": "",
                     "stringVal": "sTr",
                     "zeroIntVal": 0,
                     "zeroDecimalVal": 0.0,
@@ -82,10 +84,15 @@ class JsonAssuredTest {
         .isNotNull("$.booleanTrue")
         .isEqual("$.stringVal", "sTr")
         .stringPath(
+            "$.blankStringVal", strVal -> strVal.isBlank().isNotEmpty().isEqualTo(" \n \t "))
+        .stringPath("$.emptyStringVal", strVal -> strVal.isEmpty().isBlank().isEqualTo(""))
+        .stringPath(
             "$.stringVal",
             strVal ->
                 strVal
                     .isEqualTo("sTr")
+                    .isNotBlank()
+                    .isNotEmpty()
                     .isNotEqualTo("str")
                     .isEqualToIgnoringCase("str")
                     .isNotEqualToIgnoringCase("st")
@@ -148,7 +155,8 @@ class JsonAssuredTest {
                     .isInRange(-1, 1234567890)
                     .isInRange(-1, 123456789)
                     .isNotIn(List.of(12345678, 1234567890))
-                    .satisfies(it -> {}))
+                    .satisfies(it -> {})
+                    .isIn(List.of(123456789, 1234567890)))
         .decimalPath(
             "$.zeroDecimalVal",
             decimalVal ->

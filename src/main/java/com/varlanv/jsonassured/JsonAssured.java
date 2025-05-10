@@ -11,7 +11,6 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.intellij.lang.annotations.Language;
@@ -831,6 +830,10 @@ public interface JsonAssured {
       return InternalUtils.hasSize(this, numbersSupplier, size, path, arrayType);
     }
 
+    public JsonNumberArrayAssertions<N> doesNotContainNull() {
+      return InternalUtils.doesNotContainNull(this, numbersSupplier, path, arrayType);
+    }
+
     public JsonNumberArrayAssertions<N> containsAll(Iterable<? extends N> expected) {
       return InternalUtils.containsAll(
           this,
@@ -874,6 +877,10 @@ public interface JsonAssured {
 
     public JsonStringArrayAssertions hasSize(int size) {
       return InternalUtils.hasSize(this, stringsSupplier, size, path, "String");
+    }
+
+    public JsonStringArrayAssertions doesNotContainNull() {
+      return InternalUtils.doesNotContainNull(this, stringsSupplier, path, "String");
     }
 
     public JsonStringArrayAssertions containsAll(Iterable<? extends CharSequence> expected) {
@@ -927,26 +934,5 @@ public interface JsonAssured {
   interface ThrowingSupplier<T> {
 
     T get() throws Throwable;
-  }
-}
-
-final class MemoizedSupplier<T> implements Supplier<T> {
-
-  private final Supplier<T> supplier;
-  @Nullable private T value;
-
-  MemoizedSupplier(Supplier<T> supplier) {
-    this.supplier = supplier;
-  }
-
-  @Override
-  public T get() {
-    @Nullable var val = value;
-    if (val != null) {
-      return val;
-    }
-    val = supplier.get();
-    value = val;
-    return val;
   }
 }

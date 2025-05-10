@@ -85,6 +85,33 @@ interface InternalUtils {
             arrayType, path, subject.size(), expectedSize));
   }
 
+  static <R> R doesNotContainNull(
+      R toReturn, Supplier<? extends List<?>> subjectSupplier, String path, String arrayType) {
+    var subject = subjectSupplier.get();
+    if (subject.isEmpty()) {
+      return toReturn;
+    }
+    var indexesOfNull = new ArrayList<Integer>(0);
+    for (var idx = 0; idx < subject.size(); idx++) {
+      if (subject.get(idx) == null) {
+        indexesOfNull.add(idx);
+      }
+    }
+    if (indexesOfNull.isEmpty()) {
+      return toReturn;
+    } else if (indexesOfNull.size() == 1) {
+      throw new AssertionError(
+          String.format(
+              "%s array at path \"%s\" expected to not contain null, but found one null at index [%d]",
+              arrayType, path, indexesOfNull.get(0)));
+    } else {
+      throw new AssertionError(
+          String.format(
+              "%s array at path \"%s\" expected to not contain null, but found multiple nulls at indexes [%s]",
+              arrayType, path, indexesOfNull));
+    }
+  }
+
   static <E, R> R containsAll(
       R toReturn,
       Supplier<? extends List<E>> subjectSupplier,

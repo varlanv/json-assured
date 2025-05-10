@@ -246,8 +246,8 @@ class JsonAssuredTest {
                     .containsAny(List.of(BigDecimal.ZERO, new BigDecimal("123456789.223456789")))
                     .anySatisfy(
                         val ->
-                            Assertions.assertTrue(
-                                val.compareTo(new BigDecimal("123456789.123456789")) == 0))
+                            Assertions.assertEquals(
+                                0, val.compareTo(new BigDecimal("123456789.123456789"))))
                     .allSatisfy(val -> Assertions.assertTrue(val.compareTo(BigDecimal.ZERO) > 0))
                     .satisfy(vals -> Assertions.assertEquals(2, vals.size())));
   }
@@ -359,7 +359,7 @@ class JsonAssuredTest {
 
     @ParameterizedTest
     @ArgumentsSource(NullableBlankStrings.class)
-    void when_blank_jsonPath__then_fail(String string) {
+    void when_blank_jsonPath__then_fail(@Language("jsonpath") String string) {
       var assertionError =
           Assertions.assertThrows(
               IllegalArgumentException.class, () -> subject.isEqual(string, "str"));
@@ -500,7 +500,7 @@ class JsonAssuredTest {
 
     @ParameterizedTest
     @ArgumentsSource(NullableBlankStrings.class)
-    void isEqualTo__when_blank_jsonPath__then_fail(String blankString) {
+    void isEqualTo__when_blank_jsonPath__then_fail(@Language("jsonpath") String blankString) {
       var assertionError =
           Assertions.assertThrows(
               IllegalArgumentException.class,
@@ -571,6 +571,7 @@ class JsonAssuredTest {
     @ParameterizedTest
     @ArgumentsSource(NonNullBlankStrings.class)
     void isBlank__when_blank__then_ok(String blankString) {
+      @Language("json")
       var jsonWithBlank = "{" + "\"stringVal\": \"" + blankString + "\"" + "}";
       var subject = JsonAssured.assertJson(jsonWithBlank);
 
@@ -593,6 +594,7 @@ class JsonAssuredTest {
     @ParameterizedTest
     @ArgumentsSource(NonNullBlankStrings.class)
     void isNotBlank__when_blank__then_fail(String blankString) {
+      @Language("json")
       var jsonWithBlank = "{" + "\"stringVal\": \"" + blankString + "\"" + "}";
       var subject = JsonAssured.assertJson(jsonWithBlank);
 
@@ -617,6 +619,7 @@ class JsonAssuredTest {
 
     @Test
     void isEmpty__when_empty__then_ok() {
+      @Language("json")
       var jsonWithEmpty = "{" + "\"stringVal\": \"" + "\"" + "}";
       var subject = JsonAssured.assertJson(jsonWithEmpty);
 
@@ -638,6 +641,7 @@ class JsonAssuredTest {
 
     @Test
     void isNotEmpty__when_empty__then_fail() {
+      @Language("json")
       var jsonWithBlank = "{" + "\"stringVal\": \"" + "\"" + "}";
       var subject = JsonAssured.assertJson(jsonWithBlank);
 
@@ -648,8 +652,7 @@ class JsonAssuredTest {
                   subject.stringPath("$.stringVal", JsonAssured.JsonStringAssertions::isNotEmpty));
 
       Assertions.assertEquals(
-          String.format(
-              "Expected string at path \"$.stringVal\" to be not empty, but actual value was empty"),
+          "Expected string at path \"$.stringVal\" to be not empty, but actual value was empty",
           assertionError.getMessage());
     }
 
@@ -828,7 +831,7 @@ class JsonAssuredTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"sTrr", ".qweq"})
-    void matches__when_not_matches__then_fail(String pattern) {
+    void matches__when_not_matches__then_fail(@Language("regexp") String pattern) {
       var assertionError =
           Assertions.assertThrows(
               AssertionError.class,
@@ -843,7 +846,7 @@ class JsonAssuredTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"sTr", ".*"})
-    void doesNotMatch__when_matches__then_fail(String pattern) {
+    void doesNotMatch__when_matches__then_fail(@Language("regexp") String pattern) {
       var assertionError =
           Assertions.assertThrows(
               AssertionError.class,
@@ -948,7 +951,7 @@ class JsonAssuredTest {
 
     @ParameterizedTest
     @ArgumentsSource(NullableBlankStrings.class)
-    void when_null_jsonPath__then_fail(String string) {
+    void when_null_jsonPath__then_fail(@Language("jsonpath") String string) {
       var assertionError =
           Assertions.assertThrows(
               IllegalArgumentException.class, () -> subject.doesNotExist(string));
@@ -967,7 +970,7 @@ class JsonAssuredTest {
           Assertions.assertThrows(IllegalArgumentException.class, () -> subject.doesNotExist(null));
 
       Assertions.assertEquals(
-          assertionError.getMessage(), "jsonPath should be non-null and non-blank");
+          "jsonPath should be non-null and non-blank", assertionError.getMessage());
     }
 
     @Test

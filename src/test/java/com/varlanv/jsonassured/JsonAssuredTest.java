@@ -1464,6 +1464,148 @@ class JsonAssuredTest {
     }
   }
 
+  @Nested
+  class longPath {
+
+    @Test
+    void isNegative__when_string_value__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.longPath("$.stringVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Long at path \"$.stringVal\", but actual type was \"string\": <sTr>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_null__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.longPath("$.nullVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Long at path \"$.nullVal\", but actual type was \"null\"",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_array__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.longPath("$.stringsArray", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Long at path \"$.stringsArray\", but actual type was \"array\": <[\"a\",\"b\",\"c\"]>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_object__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.longPath("$.objectVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Long at path \"$.objectVal\", but actual type was \"object\": <{nestedStringVal=str, nestedIntVal=123456789}>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_decimal__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.longPath(
+                      "$.positiveDecimalVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Long at path \"$.positiveDecimalVal\", but actual type was \"decimal\": <123456789.123456789>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_int__then_ok() {
+      Assertions.assertDoesNotThrow(
+          () -> subject.longPath("$.negativeIntVal", JsonAssured.JsonNumberAssertions::isNegative));
+    }
+
+    @Test
+    void isNegative__when_small_decimal__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.longPath(
+                      "$.smallDecimalVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Long at path \"$.smallDecimalVal\", but actual type was \"decimal\": <1.2>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_boolean__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.longPath("$.booleanTrue", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Long at path \"$.booleanTrue\", but actual type was \"boolean\": <true>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_zero_decimal__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.longPath(
+                      "$.zeroDecimalVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Long at path \"$.zeroDecimalVal\", but actual type was \"decimal\": <0.0>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_int_as_string__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.longPath(
+                      "$.intAsStringVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Long at path \"$.intAsStringVal\", but actual type was \"string\": <1234>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_positive__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.longPath(
+                      "$.positiveLongVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected Long number at path \"$.positiveLongVal\" to be negative, but actual value was <1234567890123456>",
+          assertionError.getMessage());
+    }
+  }
+
   static class NonNullBlankStrings implements ArgumentsProvider {
 
     @Override

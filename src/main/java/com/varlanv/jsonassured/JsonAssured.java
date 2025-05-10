@@ -54,14 +54,20 @@ public interface JsonAssured {
     private static String resolveActualTypeName(@Nullable Object val) {
       if (val == null) {
         return "null";
-      } else if (val instanceof Iterable<?>) {
+      } else if (val instanceof Iterable<?> || val.getClass().isArray()) {
         return "array";
       } else if (val instanceof CharSequence) {
         return "string";
       } else if (val instanceof Map<?, ?>) {
         return "object";
+      } else if (val instanceof BigDecimal || val instanceof Double) {
+        return "decimal";
+      } else if (val instanceof Long) {
+        return "long";
+      } else if (val instanceof Boolean) {
+        return "boolean";
       } else {
-        return "number";
+        return "integer";
       }
     }
 
@@ -104,6 +110,7 @@ public interface JsonAssured {
             consumer.accept(
                 new JsonNumberAssertions<>(
                     jsonPath,
+                    "Int number",
                     0,
                     new MemoizedSupplier<>(
                         () -> {
@@ -113,8 +120,10 @@ public interface JsonAssured {
                           }
                           throw new AssertionError(
                               String.format(
-                                  "Expected type Integer at path \"%s\", but actual type was \"%s\"",
-                                  jsonPath, val.getClass().getName()));
+                                  "Expected type Integer at path \"%s\", but actual type was \"%s\"%s",
+                                  jsonPath,
+                                  resolveActualTypeName(val),
+                                  val == null ? "" : String.format(": <%s>", val)));
                         })));
             return this;
           });
@@ -128,6 +137,7 @@ public interface JsonAssured {
             consumer.accept(
                 new JsonNumberAssertions<>(
                     jsonPath,
+                    "Long number",
                     0L,
                     new MemoizedSupplier<>(
                         () -> {
@@ -154,6 +164,7 @@ public interface JsonAssured {
             consumer.accept(
                 new JsonNumberAssertions<>(
                     jsonPath,
+                    "Decimal number",
                     BigDecimal.ZERO,
                     new MemoizedSupplier<>(
                         () -> {
@@ -201,7 +212,7 @@ public interface JsonAssured {
                           throw new AssertionError(
                               String.format(
                                   "Expected string array type at path \"%s\", but actual type was \"%s\"",
-                                  jsonPath, val.getClass().getName()));
+                                  jsonPath, resolveActualTypeName(val)));
                         })));
             return this;
           });
@@ -229,7 +240,7 @@ public interface JsonAssured {
                                 throw new AssertionError(
                                     String.format(
                                         "Expected int array type at path \"%s\", but actual type of value in array was \"%s\"",
-                                        jsonPath, item.getClass().getName()));
+                                        jsonPath, resolveActualTypeName(item)));
                               }
                             }
                             return objects;
@@ -397,27 +408,37 @@ public interface JsonAssured {
   final class JsonNumberAssertions<N extends Number & Comparable<N>> {
 
     private final String path;
+    private final String typeName;
     private final MemoizedSupplier<N> numberSupplier;
     private final N zero;
 
-    JsonNumberAssertions(String path, N zero, MemoizedSupplier<N> numberSupplier) {
+    JsonNumberAssertions(String path, String typeName, N zero, MemoizedSupplier<N> numberSupplier) {
       this.path = path;
+      this.typeName = typeName;
       this.zero = zero;
       this.numberSupplier = numberSupplier;
     }
 
     public JsonNumberAssertions<N> isPositive() {
-      if (numberSupplier.get().compareTo(zero) > 0) {
+      var actualNum = numberSupplier.get();
+      if (actualNum.compareTo(zero) > 0) {
         return this;
       }
-      throw new AssertionError(String.format("Number at path \"%s\" is not positive", path));
+      throw new AssertionError(
+          String.format(
+              "Expected %s at path \"%s\" to be positive, but actual value was negative: <%s>",
+              typeName, path, actualNum));
     }
 
     public JsonNumberAssertions<N> isNegative() {
-      if (numberSupplier.get().compareTo(zero) < 0) {
+      var actualNum = numberSupplier.get();
+      if (actualNum.compareTo(zero) < 0) {
         return this;
       }
-      throw new AssertionError(String.format("Number at path \"%s\" is not negative", path));
+      throw new AssertionError(
+          String.format(
+              "Expected %s at path \"%s\" to be negative, but actual value was <%s>",
+              typeName, path, actualNum.equals(zero) ? zero : actualNum));
     }
 
     public JsonNumberAssertions<N> isZero() {

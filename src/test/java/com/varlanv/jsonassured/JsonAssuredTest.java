@@ -23,6 +23,7 @@ class JsonAssuredTest {
                     "stringVal": "sTr",
                     "zeroIntVal": 0,
                     "zeroDecimalVal": 0.0,
+                    "smallDecimalVal": 1.2,
                     "intAsStringVal": "1234",
                     "decimalAsStringVal": "1234.5678",
                     "positiveIntVal": 123456789,
@@ -400,7 +401,7 @@ class JsonAssuredTest {
           Assertions.assertThrows(
               AssertionError.class, () -> subject.isEqual("$.positiveIntVal", "str"));
       Assertions.assertEquals(
-          "Expected value of type string at path \"$.positiveIntVal\", but actual type was \"number\" (123456789)",
+          "Expected value of type string at path \"$.positiveIntVal\", but actual type was \"integer\" (123456789)",
           assertionError.getMessage());
     }
 
@@ -456,7 +457,7 @@ class JsonAssuredTest {
               () -> subject.stringPath("$.positiveIntVal", strVal -> strVal.isEqualTo("str2")));
 
       Assertions.assertEquals(
-          "Expected value of type string at path \"$.positiveIntVal\", but actual type was \"number\" (123456789)",
+          "Expected value of type string at path \"$.positiveIntVal\", but actual type was \"integer\" (123456789)",
           assertionError.getMessage());
     }
 
@@ -970,6 +971,155 @@ class JsonAssuredTest {
         throws Exception {
       return Stream.concat(NonNullBlankStrings.strings(), Stream.builder().add(null).build())
           .map(Arguments::of);
+    }
+  }
+
+  @Nested
+  class intPath {
+
+    @Test
+    void isNegative__when_string_value__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.intPath("$.stringVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Integer at path \"$.stringVal\", but actual type was \"string\": <sTr>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_null__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.intPath("$.nullVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Integer at path \"$.nullVal\", but actual type was \"null\"",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_array__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.intPath("$.stringsArray", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Integer at path \"$.stringsArray\", but actual type was \"array\": <[\"a\",\"b\",\"c\"]>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_object__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.intPath("$.objectVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Integer at path \"$.objectVal\", but actual type was \"object\": <{nestedStringVal=str, nestedIntVal=123456789}>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_decimal__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.intPath(
+                      "$.positiveDecimalVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Integer at path \"$.positiveDecimalVal\", but actual type was \"decimal\": <123456789.123456789>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_long__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.intPath(
+                      "$.positiveLongVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Integer at path \"$.positiveLongVal\", but actual type was \"long\": <1234567890123456>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_small_decimal__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.intPath(
+                      "$.smallDecimalVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Integer at path \"$.smallDecimalVal\", but actual type was \"decimal\": <1.2>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_zero_decimal__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.intPath(
+                      "$.zeroDecimalVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Integer at path \"$.zeroDecimalVal\", but actual type was \"decimal\": <0.0>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_int_as_string__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.intPath(
+                      "$.intAsStringVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected type Integer at path \"$.intAsStringVal\", but actual type was \"string\": <1234>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_positive__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () ->
+                  subject.intPath(
+                      "$.positiveIntVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected Int number at path \"$.positiveIntVal\" to be negative, but actual value was <123456789>",
+          assertionError.getMessage());
+    }
+
+    @Test
+    void isNegative__when_zero__then_fail() {
+      var assertionError =
+          Assertions.assertThrows(
+              AssertionError.class,
+              () -> subject.intPath("$.zeroIntVal", JsonAssured.JsonNumberAssertions::isNegative));
+
+      Assertions.assertEquals(
+          "Expected Int number at path \"$.zeroIntVal\" to be negative, but actual value was <0>",
+          assertionError.getMessage());
     }
   }
 
